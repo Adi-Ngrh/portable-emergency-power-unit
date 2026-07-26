@@ -32,6 +32,7 @@ typedef enum logic [6:0]
 state_t current_state;
 state_t next_state;
 
+// temporary outputs registers
 logic system_enable_next;
 logic warning_led_next;
 logic shutdown_signal_next;
@@ -39,18 +40,47 @@ logic buzzer_alert_next;
 logic recovery_mode_next;
 state_t state_debug_bus_next;
 
+// synchronizer registers
+logic battery_low_raw, battery_low_sync;
+logic battery_critical_raw, battery_critical_sync;
+logic overtemp_raw, overtemp_sync;
+logic overcurrent_raw, overcurrent_sync;
+logic charger_connected_raw, charger_connected_sync;
+logic manual_shutdown_raw, manual_shutdown_sync;
 
-
-// block to update current state on clock edge or reset signal
+// 2-stage synchronizer block for external inputs
 always_ff @(posedge clk or negedge reset_n) begin
-	// reset button bypass other logics (active-low)
 	if (!reset_n) begin
-		current_state <= OFF;
+		battery_low_raw <= 1'b0;
+		battery_low_sync <= 1'b0;
+		battery_critical_raw <= 1'b0;
+		battery_critical_sync <= 1'b0;
+		overtemp_raw <= 1'b0;
+		overtemp_sync <= 1'b0;
+		overcurrent_raw <= 1'b0;
+		overcurrent_sync <= 1'b0;
+		charger_connected_raw <= 1'b0;
+		charger_connected_sync <= 1'b0;
+		manual_shutdown_raw <= 1'b0;
+		manual_shutdown_sync <= 1'b0;
 	end else begin
-		current_state <= next_state;
+		// Stage 1: Capture raw inputs (susceptible to metastability)
+		battery_low_raw <= battery_low;
+		battery_critical_raw <= battery_critical;
+		overtemp_raw <= overtemp;
+		overcurrent_raw <= overcurrent;
+		charger_connected_raw <= charger_connected;
+		manual_shutdown_raw <= manual_shutdown;
+		
+		// Stage 2: Capture settled signals
+		battery_low_sync <= battery_low_raw;
+		battery_critical_sync <= battery_critical_raw;
+		overtemp_sync <= overtemp_raw;
+		overcurrent_sync <= overcurrent_raw;
+		charger_connected_sync <= charger_connected_raw;
+		manual_shutdown_sync <= manual_shutdown_raw;
 	end
 end
-
 
 
 // block to set next state
@@ -69,7 +99,7 @@ always_comb begin
             
 		// OFF: Device is off. Transitions to BOOT when a charger is plugged in.
 		OFF: begin
-			 if (charger_connected) begin
+			 if (charger_connected_sync) begin
 				  next_state = BOOT;
 			 end
 		end
@@ -86,11 +116,11 @@ always_comb begin
 		// Transitions to SHUTDOWN if requested by user.
 		NORMAL: begin
 			 system_enable_next = 1'b1;
-			 if (battery_critical || overcurrent) begin
+			 if (battery_critical_sync || overcurrent_sync) begin
 				  next_state = CRITICAL;
-			 end else if (battery_low || overtemp) begin
+			 end else if (battery_low_sync || overtemp_sync) begin
 				  next_state = WARNING;
-			 end else if (manual_shutdown) begin
+			 end else if (manual_shutdown_sync) begin
 				  next_state = SHUTDOWN;
 			 end
 		end
@@ -101,9 +131,9 @@ always_comb begin
 		WARNING: begin
 			 system_enable_next = 1'b1;
 			 warning_led_next   = 1'b1;
-			 if (battery_critical || overcurrent) begin
+			 if (battery_critical_sync || overcurrent_sync) begin
 				  next_state = CRITICAL;
-			 end else if (!battery_low && !overtemp) begin
+			 end else if (!battery_low_sync && !overtemp_sync) begin
 				  next_state = NORMAL;
 			 end
 		end
@@ -114,7 +144,7 @@ always_comb begin
 			 shutdown_signal_next = 1'b1;
 			 warning_led_next     = 1'b1;
 			 buzzer_alert_next    = 1'b1;
-			 if (manual_shutdown) begin
+			 if (manual_shutdown_sync) begin
 				  next_state = SHUTDOWN;
 			 end
 		end
@@ -122,7 +152,7 @@ always_comb begin
 		// SHUTDOWN: Device is in the process of turning off.
 		// Transitions to RECOVERY if a charger is connected to recover the battery.
 		SHUTDOWN: begin
-			 if (charger_connected) begin
+			 if (charger_connected_sync) begin
 				  next_state = RECOVERY;
 			 end
 		end
@@ -131,7 +161,7 @@ always_comb begin
 		// Transitions back to NORMAL once the battery is no longer low or critical.
 		RECOVERY: begin
 			 recovery_mode_next = 1'b1;
-			 if (!battery_critical && !battery_low) begin
+			 if (!battery_critical_sync && !battery_low_sync) begin
 				  next_state = NORMAL;
 			 end
 		end
@@ -141,6 +171,18 @@ always_comb begin
 		end
 		
 	endcase
+end
+
+
+
+// block to update current state on clock edge or reset signal
+always_ff @(posedge clk or negedge reset_n) begin
+	// reset button bypass other logics (active-low)
+	if (!reset_n) begin
+		current_state <= OFF;
+	end else begin
+		current_state <= next_state;
+	end
 end
 
 
