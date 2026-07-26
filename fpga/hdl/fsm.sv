@@ -67,17 +67,23 @@ always_comb begin
 	// state evaluation
 	case (current_state)
             
+		// OFF: Device is off. Transitions to BOOT when a charger is plugged in.
 		OFF: begin
 			 if (charger_connected) begin
 				  next_state = BOOT;
 			 end
 		end
 
+		// BOOT: Device is starting up. Transitions immediately to NORMAL once enabled.
 		BOOT: begin
 			 system_enable_next = 1'b1; 
 			 next_state = NORMAL; 
 		end
 
+		// NORMAL: Device is fully operational. 
+		// Transitions to CRITICAL if immediate danger (battery_critical/overcurrent).
+		// Transitions to WARNING if non-immediate issue (battery_low/overtemp).
+		// Transitions to SHUTDOWN if requested by user.
 		NORMAL: begin
 			 system_enable_next = 1'b1;
 			 if (battery_critical || overcurrent) begin
@@ -89,6 +95,9 @@ always_comb begin
 			 end
 		end
 
+		// WARNING: Non-immediate issue exists.
+		// Transitions to CRITICAL if faults escalate.
+		// Transitions back to NORMAL if all warnings clear.
 		WARNING: begin
 			 system_enable_next = 1'b1;
 			 warning_led_next   = 1'b1;
@@ -99,6 +108,8 @@ always_comb begin
 			 end
 		end
 
+		// CRITICAL: Immediate danger. Device asserts shutdown and alarms.
+		// Transitions to SHUTDOWN only when acknowledged via manual_shutdown.
 		CRITICAL: begin
 			 shutdown_signal_next = 1'b1;
 			 warning_led_next     = 1'b1;
@@ -108,12 +119,16 @@ always_comb begin
 			 end
 		end
 
+		// SHUTDOWN: Device is in the process of turning off.
+		// Transitions to RECOVERY if a charger is connected to recover the battery.
 		SHUTDOWN: begin
 			 if (charger_connected) begin
 				  next_state = RECOVERY;
 			 end
 		end
 
+		// RECOVERY: Device charges safely while keeping main system disabled.
+		// Transitions back to NORMAL once the battery is no longer low or critical.
 		RECOVERY: begin
 			 recovery_mode_next = 1'b1;
 			 if (!battery_critical && !battery_low) begin
