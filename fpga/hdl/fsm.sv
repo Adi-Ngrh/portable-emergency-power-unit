@@ -150,9 +150,9 @@ always_comb begin
 		end
 
 		// SHUTDOWN: Device is in the process of turning off.
-		// Transitions to RECOVERY if a charger is connected to recover the battery.
+		// Transitions to RECOVERY if a charger is connected AND a battery fault caused the shutdown.
 		SHUTDOWN: begin
-			 if (charger_connected_sync) begin
+			 if (charger_connected_sync && battery_fault_latch) begin
 				  next_state = RECOVERY;
 			 end
 		end
@@ -175,13 +175,21 @@ end
 
 
 
+logic battery_fault_latch;
+
 // block to update current state on clock edge or reset signal
 always_ff @(posedge clk or negedge reset_n) begin
 	// reset button bypass other logics (active-low)
 	if (!reset_n) begin
 		current_state <= OFF;
+		battery_fault_latch <= 1'b0;
 	end else begin
 		current_state <= next_state;
+		
+		// Latch battery faults to ensure RECOVERY is only used for dead batteries
+		if (battery_critical_sync || battery_low_sync) begin
+			battery_fault_latch <= 1'b1;
+		end
 	end
 end
 
