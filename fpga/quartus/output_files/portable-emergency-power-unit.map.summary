@@ -1,0 +1,16 @@
+Analysis & Synthesis Status : Successful - Tue Aug  4 15:22:15 2026
+Quartus Prime Version : 25.1std.0 Build 1129 10/21/2025 SC Lite Edition
+Revision Name : portable-emergency-power-unit
+Top-level Entity Name : portable_emergency_power_unit
+Family : MAX 10
+Total logic elements : 55
+    Total combinational functions : 31
+    Dedicated logic registers : 39
+Total registers : 39
+Total pins : 31
+Total virtual pins : 0
+Total memory bits : 0
+Embedded Multiplier 9-bit elements : 0
+Total PLLs : 0
+UFM blocks : 0
+ADC blocks : 0

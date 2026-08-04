@@ -1,0 +1,37 @@
+m255
+K4
+z2
+!s11f vlog 2025.2 2025.05, May 31 2025
+13
+!s112 1.1
+!i10d 8192
+!i10e 25
+!i10f 100
+cModel Technology
+Z0 dD:/College/Despro/portable-emergency-power-unit/fpga/quartus/simulation/questa
+vportable_emergency_power_unit
+2D:/College/Despro/portable-emergency-power-unit/fpga/hdl/portable_emergency_power_unit.sv
+DXx6 sv_std 3 std 0 22 @5XbY]_OacJl=`ToSm<M^0
+!s110 1785832089
+!i10b 1
+!s100 [UCRoFkQhQ]R30AWz6a[B2
+InkT4DiQnAS=W`i8oSjf]n1
+S1
+R0
+w1785831528
+8D:/College/Despro/portable-emergency-power-unit/fpga/hdl/portable_emergency_power_unit.sv
+FD:/College/Despro/portable-emergency-power-unit/fpga/hdl/portable_emergency_power_unit.sv
+!i122 0
+L0 3 84
+VDg1SIo80bB@j0V0VzS_@n1
+OL;L;2025.2;82
+r1
+!s85 0
+31
+!s108 1785832088.000000
+!s107 D:/College/Despro/portable-emergency-power-unit/fpga/hdl/portable_emergency_power_unit.sv|
+!s90 -reportprogress|300|-sv|-work|work|+incdir+D:/College/Despro/portable-emergency-power-unit/fpga/hdl|D:/College/Despro/portable-emergency-power-unit/fpga/hdl/portable_emergency_power_unit.sv|
+!i113 0
+o-sv -work work -L mtiAvm -L mtiRnm -L mtiOvm -L mtiUvm -L mtiUPF -L infact
+!s92 -sv -work work +incdir+D:/College/Despro/portable-emergency-power-unit/fpga/hdl -L mtiAvm -L mtiRnm -L mtiOvm -L mtiUvm -L mtiUPF -L infact
+tCvgOpt 0 defaultOptions 1085333592
