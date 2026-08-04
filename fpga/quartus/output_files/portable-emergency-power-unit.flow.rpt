@@ -1,5 +1,5 @@
 Flow report for portable-emergency-power-unit
-Tue Aug  4 15:22:15 2026
+Tue Aug  4 15:48:21 2026
 Quartus Prime Version 25.1std.0 Build 1129 10/21/2025 SC Lite Edition
 
 
@@ -41,7 +41,7 @@ on the Quartus Prime software download page.
 +--------------------------------------------------------------------------------------+
 ; Flow Summary                                                                         ;
 +------------------------------------+-------------------------------------------------+
-; Flow Status                        ; Successful - Tue Aug  4 15:22:15 2026           ;
+; Flow Status                        ; Successful - Tue Aug  4 15:48:21 2026           ;
 ; Quartus Prime Version              ; 25.1std.0 Build 1129 10/21/2025 SC Lite Edition ;
 ; Revision Name                      ; portable-emergency-power-unit                   ;
 ; Top-level Entity Name              ; portable_emergency_power_unit                   ;
@@ -67,7 +67,7 @@ on the Quartus Prime software download page.
 +-------------------+-------------------------------+
 ; Option            ; Setting                       ;
 +-------------------+-------------------------------+
-; Start date & time ; 08/04/2026 15:22:08           ;
+; Start date & time ; 08/04/2026 15:48:15           ;
 ; Main task         ; Compilation                   ;
 ; Revision Name     ; portable-emergency-power-unit ;
 +-------------------+-------------------------------+
@@ -78,7 +78,7 @@ on the Quartus Prime software download page.
 +--------------------------------------+----------------------------------------+-------------------------------+-------------------------------+-----------------------------------+
 ; Assignment Name                      ; Value                                  ; Default Value                 ; Entity Name                   ; Section Id                        ;
 +--------------------------------------+----------------------------------------+-------------------------------+-------------------------------+-----------------------------------+
-; COMPILER_SIGNATURE_ID                ; 345052807169.178583172813624           ; --                            ; --                            ; --                                ;
+; COMPILER_SIGNATURE_ID                ; 345052807169.178583329508568           ; --                            ; --                            ; --                                ;
 ; EDA_DESIGN_INSTANCE_NAME             ; NA                                     ; --                            ; --                            ; tb_fsm                            ;
 ; EDA_DESIGN_INSTANCE_NAME             ; NA                                     ; --                            ; --                            ; tb_fee                            ;
 ; EDA_GENERATE_FUNCTIONAL_NETLIST      ; Off                                    ; --                            ; --                            ; eda_board_design_timing           ;
@@ -115,8 +115,8 @@ on the Quartus Prime software download page.
 +----------------------+--------------+-------------------------+---------------------+------------------------------------+
 ; Module Name          ; Elapsed Time ; Average Processors Used ; Peak Virtual Memory ; Total CPU Time (on all processors) ;
 +----------------------+--------------+-------------------------+---------------------+------------------------------------+
-; Analysis & Synthesis ; 00:00:06     ; 1.0                     ; 4861 MB             ; 00:00:16                           ;
-; Total                ; 00:00:06     ; --                      ; --                  ; 00:00:16                           ;
+; Analysis & Synthesis ; 00:00:07     ; 1.0                     ; 4861 MB             ; 00:00:16                           ;
+; Total                ; 00:00:07     ; --                      ; --                  ; 00:00:16                           ;
 +----------------------+--------------+-------------------------+---------------------+------------------------------------+
 
 

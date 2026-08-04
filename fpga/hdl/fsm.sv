@@ -32,6 +32,8 @@ typedef enum logic [6:0]
 state_t current_state;
 state_t next_state;
 
+logic battery_fault_latch;
+
 // temporary outputs registers
 logic system_enable_next;
 logic warning_led_next;
@@ -174,8 +176,6 @@ always_comb begin
 end
 
 
-
-logic battery_fault_latch;
 
 // block to update current state on clock edge or reset signal
 always_ff @(posedge clk or negedge reset_n) begin

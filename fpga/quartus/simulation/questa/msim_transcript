@@ -27,26 +27,89 @@
 # 
 # vlog -sv -work work +incdir+D:/College/Despro/portable-emergency-power-unit/fpga/hdl {D:/College/Despro/portable-emergency-power-unit/fpga/hdl/portable_emergency_power_unit.sv}
 # Questa Altera Starter FPGA Edition-64 vlog 2025.2 Compiler 2025.05 May 31 2025
-# Start time: 15:28:08 on Aug 04,2026
+# Start time: 15:48:36 on Aug 04,2026
 # vlog -reportprogress 300 -sv -work work "+incdir+D:/College/Despro/portable-emergency-power-unit/fpga/hdl" D:/College/Despro/portable-emergency-power-unit/fpga/hdl/portable_emergency_power_unit.sv 
 # ** Note: (vlog-220) 'modelsim.ini' is used as the ini file.
 # -- Compiling module portable_emergency_power_unit
 # 
 # Top level modules:
 # 	portable_emergency_power_unit
-# End time: 15:28:09 on Aug 04,2026, Elapsed time: 0:00:01
+# End time: 15:48:36 on Aug 04,2026, Elapsed time: 0:00:00
 # Errors: 0, Warnings: 0
 # vlog -sv -work work +incdir+D:/College/Despro/portable-emergency-power-unit/fpga/hdl {D:/College/Despro/portable-emergency-power-unit/fpga/hdl/fsm.sv}
 # Questa Altera Starter FPGA Edition-64 vlog 2025.2 Compiler 2025.05 May 31 2025
-# Start time: 15:28:09 on Aug 04,2026
+# Start time: 15:48:36 on Aug 04,2026
 # vlog -reportprogress 300 -sv -work work "+incdir+D:/College/Despro/portable-emergency-power-unit/fpga/hdl" D:/College/Despro/portable-emergency-power-unit/fpga/hdl/fsm.sv 
 # ** Note: (vlog-220) 'modelsim.ini' is used as the ini file.
 # -- Compiling module power_state_machine
-# ** Error: D:/College/Despro/portable-emergency-power-unit/fpga/hdl/fsm.sv(155): (vlog-2730) Undefined variable: 'battery_fault_latch'.
-# End time: 15:28:09 on Aug 04,2026, Elapsed time: 0:00:00
-# Errors: 1, Warnings: 0
-# ** Error: c:/altera_lite/25.1std/questa_fse/win64/vlog failed.
-# Error in macro ./portable-emergency-power-unit_run_msim_rtl_verilog.do line 9
-# c:/altera_lite/25.1std/questa_fse/win64/vlog failed.
-#     while executing
-# "vlog -sv -work work +incdir+D:/College/Despro/portable-emergency-power-unit/fpga/hdl {D:/College/Despro/portable-emergency-power-unit/fpga/hdl/fsm.sv}"
+# 
+# Top level modules:
+# 	power_state_machine
+# End time: 15:48:36 on Aug 04,2026, Elapsed time: 0:00:00
+# Errors: 0, Warnings: 0
+# vlog -sv -work work +incdir+D:/College/Despro/portable-emergency-power-unit/fpga/hdl {D:/College/Despro/portable-emergency-power-unit/fpga/hdl/fee.sv}
+# Questa Altera Starter FPGA Edition-64 vlog 2025.2 Compiler 2025.05 May 31 2025
+# Start time: 15:48:37 on Aug 04,2026
+# vlog -reportprogress 300 -sv -work work "+incdir+D:/College/Despro/portable-emergency-power-unit/fpga/hdl" D:/College/Despro/portable-emergency-power-unit/fpga/hdl/fee.sv 
+# ** Note: (vlog-220) 'modelsim.ini' is used as the ini file.
+# -- Compiling module fault_event_engine
+# 
+# Top level modules:
+# 	fault_event_engine
+# End time: 15:48:37 on Aug 04,2026, Elapsed time: 0:00:00
+# Errors: 0, Warnings: 0
+# 
+# vlog -sv -work work +incdir+D:/College/Despro/portable-emergency-power-unit/fpga/quartus/../testbench {D:/College/Despro/portable-emergency-power-unit/fpga/quartus/../testbench/tb_fsm.sv}
+# Questa Altera Starter FPGA Edition-64 vlog 2025.2 Compiler 2025.05 May 31 2025
+# Start time: 15:48:37 on Aug 04,2026
+# vlog -reportprogress 300 -sv -work work "+incdir+D:/College/Despro/portable-emergency-power-unit/fpga/quartus/../testbench" D:/College/Despro/portable-emergency-power-unit/fpga/quartus/../testbench/tb_fsm.sv 
+# ** Note: (vlog-220) 'modelsim.ini' is used as the ini file.
+# -- Compiling module tb_fsm
+# 
+# Top level modules:
+# 	tb_fsm
+# End time: 15:48:37 on Aug 04,2026, Elapsed time: 0:00:00
+# Errors: 0, Warnings: 0
+# 
+# vsim -t 1ps -L altera_ver -L lpm_ver -L sgate_ver -L altera_mf_ver -L altera_lnsim_ver -L fiftyfivenm_ver -L rtl_work -L work -voptargs="+acc"  tb_fsm
+# ** Note: (vsim-220) 'modelsim.ini' is used as the ini file.
+# vsim -t 1ps -L altera_ver -L lpm_ver -L sgate_ver -L altera_mf_ver -L altera_lnsim_ver -L fiftyfivenm_ver -L rtl_work -L work -voptargs=""+acc"" tb_fsm 
+# Start time: 15:48:37 on Aug 04,2026
+# ** Note: (vsim-3812) Design is being optimized...
+# ** Warning: (vopt-10908) Some optimizations are turned off because the +acc switch is in effect.
+# ** Note: (vopt-220) 'modelsim.ini' is used as the ini file.
+# ** Note: (vopt-143) Recognized 1 FSM in module "power_state_machine(fast)".
+# ** Note: (vsim-12126) Error and warning message counts have been restored: Errors=0, Warnings=1.
+# Loading sv_std.std
+# Loading work.tb_fsm(fast)
+# Loading work.power_state_machine(fast)
+# 
+# add wave *
+# view structure
+# .main_pane.structure.interior.cs.body.struct
+# view signals
+# .main_pane.objects.interior.cs.body.tree
+# run -all
+# ===========================================
+#   STARTING FSM TESTBENCH (Questa/ModelSim) 
+# ===========================================
+# [0] Asserting Reset...
+# [50000] Connecting charger to boot...
+# [150000] PASS: Reached NORMAL state.
+# [150000] Injecting battery_low...
+# [250000] PASS: Reached WARNING state.
+# [350000] Injecting overtemp...
+# [450000] PASS: Reached WARNING state from overtemp.
+# [550000] PASS: Returned to NORMAL state.
+# [550000] Injecting battery_critical...
+# [650000] PASS: Reached CRITICAL state.
+# [650000] Acknowledging shutdown...
+# [850000] PASS: Entered RECOVERY mode.
+# [850000] Battery charging... clearing critical...
+# [950000] PASS: Returned to NORMAL state from RECOVERY.
+# ===========================================
+#   FSM TESTBENCH COMPLETED 
+# ===========================================
+# ** Note: $stop    : D:/College/Despro/portable-emergency-power-unit/fpga/quartus/../testbench/tb_fsm.sv(133)
+#    Time: 950 ns  Iteration: 0  Instance: /tb_fsm
+# Break in Module tb_fsm at D:/College/Despro/portable-emergency-power-unit/fpga/quartus/../testbench/tb_fsm.sv line 133
