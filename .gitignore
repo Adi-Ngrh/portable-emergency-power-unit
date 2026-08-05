@@ -1,5 +1,8 @@
 despro_mcp/
 *.md
 fpga/quartus/db/
+fpga/quartus/incremental_db/
+fpga/quartus/output_files/
+fpga/quartus/simulation/
 FPGA_Template_2_IP_Siap_Tapeout-1.docx
 FPGA_Template_2_IP_Siap_Tapeout-1.pdf
