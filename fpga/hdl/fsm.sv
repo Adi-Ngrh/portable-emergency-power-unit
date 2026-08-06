@@ -157,6 +157,7 @@ always_comb begin
 			 if (charger_connected_sync && battery_fault_latch) begin
 				  next_state = RECOVERY;
 			 end
+			 shutdown_signal_next	= 1'b1;
 		end
 
 		// RECOVERY: Device charges safely while keeping main system disabled.

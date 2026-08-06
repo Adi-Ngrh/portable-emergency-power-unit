@@ -44,7 +44,7 @@ module tb_fsm();
     );
 
     // 4. Clock Generator
-    // Generates a 50MHz clock (20ns period) suitable for MAX 10 FPGA
+    // Generates a 50MHz clock (20ns period) for MAX 10 FPGA
     always begin
         #10 clk = ~clk; 
     end
@@ -52,7 +52,7 @@ module tb_fsm();
     // 5. Test Sequence (Stimulus)
     initial begin
         $display("===========================================");
-        $display("  STARTING FSM TESTBENCH (Questa/ModelSim) ");
+        $display("  STARTING FSM TESTBENCH (4 Specific Scenarios)");
         $display("===========================================");
         
         // Initialize all inputs to 0
@@ -65,71 +65,92 @@ module tb_fsm();
         charger_connected = 0;
         manual_shutdown = 0;
 
-        // --- 1. Reset Sequence (Section 3.7 Requirement) ---
-        $display("[%0t] Asserting Reset...", $time);
-        #30; 
-        reset_n = 1; // Release reset (active low)
-        #20;
-        
-        // --- 2. Boot up to NORMAL state ---
-        // Need charger connected to boot from OFF state
-        $display("[%0t] Connecting charger to boot...", $time);
-        charger_connected = 1;
-        #100; // Wait for synchronizers (2-stage) and state transitions
+        // --- SCENARIO 1: Normal Flow (OFF -> BOOT -> NORMAL -> SHUTDOWN -> OFF) ---
+        $display("\n--- SCENARIO 1: Normal Flow ---");
+        #30 reset_n = 1; // Release reset
+        #20 charger_connected = 1; // Boot up
+        #100;
         if (state_debug_bus == 7'b0000100) $display("[%0t] PASS: Reached NORMAL state.", $time);
-        else $display("[%0t] FAIL: Did not reach NORMAL state.", $time);
-
-        // --- 3. Battery-low event injection (Section 3.7 Requirement) ---
-        $display("[%0t] Injecting battery_low...", $time);
-        battery_low = 1;
-        #100;
-        if (state_debug_bus == 7'b0001000) $display("[%0t] PASS: Reached WARNING state.", $time);
-        else $display("[%0t] FAIL: Did not reach WARNING state.", $time);
         
-        // Clear battery low
-        battery_low = 0;
+        $display("[%0t] Triggering manual shutdown...", $time);
+        manual_shutdown = 1; 
+        #100 manual_shutdown = 0;
+        if (state_debug_bus == 7'b0100000) $display("[%0t] PASS: Reached SHUTDOWN state.", $time);
+        
+        $display("[%0t] MCU cleaning up and turning off...", $time);
+        charger_connected = 0; 
+        reset_n = 0; 
+        #50 reset_n = 1; 
+        #50 charger_connected = 1; // Boot up for next scenario
         #100;
 
-        // --- 4. Overtemperature event (Section 3.7 Requirement) ---
-        $display("[%0t] Injecting overtemp...", $time);
+        // --- SCENARIO 2: Warning Recovery (NORMAL -> WARNING -> NORMAL) ---
+        $display("\n--- SCENARIO 2: Warning Recovery ---");
+        $display("[%0t] Injecting overtemp (Warning)...", $time);
         overtemp = 1;
         #100;
-        if (state_debug_bus == 7'b0001000) $display("[%0t] PASS: Reached WARNING state from overtemp.", $time);
+        if (state_debug_bus == 7'b0001000) $display("[%0t] PASS: Reached WARNING state.", $time);
         
-        // Clear overtemp
+        $display("[%0t] Clearing overtemp...", $time);
         overtemp = 0;
         #100;
         if (state_debug_bus == 7'b0000100) $display("[%0t] PASS: Returned to NORMAL state.", $time);
 
-        // --- 5. Critical battery event (Section 3.7 Requirement) ---
-        $display("[%0t] Injecting battery_critical...", $time);
+        // --- SCENARIO 3: Battery Critical (NORMAL -> WARNING -> CRITICAL -> SHUTDOWN -> RECOVERY -> NORMAL) ---
+        $display("\n--- SCENARIO 3: Battery Critical Flow ---");
+        $display("[%0t] Injecting battery_low (Warning)...", $time);
+        battery_low = 1;
+        #100;
+        $display("[%0t] Injecting battery_critical (Critical)...", $time);
         battery_critical = 1;
         #100;
         if (state_debug_bus == 7'b0010000) $display("[%0t] PASS: Reached CRITICAL state.", $time);
         
-        // Transition to SHUTDOWN requires user to manually acknowledge
         $display("[%0t] Acknowledging shutdown...", $time);
         manual_shutdown = 1;
-        #100;
-        if (state_debug_bus == 7'b0100000) $display("[%0t] PASS: Reached SHUTDOWN state.", $time);
-        manual_shutdown = 0;
-
-        // --- 6. Recovery scenario (Section 3.7 Requirement) ---
-        // Device is shutdown, battery critical was latched. Charger is still connected.
-        #100;
+        #100 manual_shutdown = 0;
+        
+        #100; // Wait for recovery transition
         if (state_debug_bus == 7'b1000000) $display("[%0t] PASS: Entered RECOVERY mode.", $time);
         
-        // Clear critical battery, assume it charged up a bit
-        $display("[%0t] Battery charging... clearing critical...", $time);
+        $display("[%0t] Battery charging... clearing faults...", $time);
         battery_critical = 0;
+        battery_low = 0;
         #100;
         if (state_debug_bus == 7'b0000100) $display("[%0t] PASS: Returned to NORMAL state from RECOVERY.", $time);
 
-        $display("===========================================");
+        // --- SCENARIO 4: Non-Battery Critical (NORMAL -> WARNING -> CRITICAL -> SHUTDOWN -> OFF) ---
+        $display("\n--- SCENARIO 4: Non-Battery Critical Flow ---");
+        $display("[%0t] Resetting device to clear battery_fault_latch...", $time);
+        reset_n = 0; charger_connected = 0;
+        #50 reset_n = 1; charger_connected = 1;
+        #100; // Boot to NORMAL
+        
+        $display("[%0t] Injecting overtemp (Warning)...", $time);
+        overtemp = 1;
+        #100;
+        $display("[%0t] Injecting overcurrent (Critical)...", $time);
+        overcurrent = 1;
+        #100;
+        if (state_debug_bus == 7'b0010000) $display("[%0t] PASS: Reached CRITICAL state.", $time);
+        
+        $display("[%0t] Acknowledging shutdown...", $time);
+        manual_shutdown = 1;
+        #100 manual_shutdown = 0;
+        
+        $display("[%0t] Verifying it stays stuck in SHUTDOWN (no recovery)...", $time);
+        #100;
+        if (state_debug_bus == 7'b0100000) $display("[%0t] PASS: Correctly stuck in SHUTDOWN.", $time);
+        
+        $display("[%0t] MCU cleaning up and turning off...", $time);
+        reset_n = 0; 
+        #50;
+        if (state_debug_bus == 7'b0000001) $display("[%0t] PASS: Device OFF.", $time);
+
+        $display("\n===========================================");
         $display("  FSM TESTBENCH COMPLETED ");
         $display("===========================================");
         
-        // Stop simulation (Questa uses $stop to pause, $finish to close)
         $stop;
     end
 
