@@ -52,7 +52,7 @@ module tb_fsm();
     // 5. Test Sequence (Stimulus)
     initial begin
         $display("===========================================");
-        $display("  STARTING FSM TESTBENCH (4 Specific Scenarios)");
+        $display("  STARTING FSM TESTBENCH (4 Scenarios)");
         $display("===========================================");
         
         // Initialize all inputs to 0

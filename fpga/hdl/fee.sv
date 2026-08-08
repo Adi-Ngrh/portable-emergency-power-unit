@@ -27,6 +27,34 @@ module fault_event_engine(
     logic [2:0] fault_code_bus_next;
     logic [1:0] buzzer_pattern_next;
 
+    // Debounce Logic (Wait 5 clock cycles to validate fault)
+    logic any_fault;
+    logic fault_valid;
+    logic [3:0] debounce_counter;
+
+    assign any_fault = (overtemperature || overcurrent || overvoltage || 
+                        undervoltage || fan_failure || sensor_failure || 
+                        communication_timeout);
+
+    always_ff @(posedge clk or negedge reset_n) begin
+        if (!reset_n) begin
+            debounce_counter <= 4'd0;
+            fault_valid <= 1'b0;
+        end else begin
+            if (any_fault) begin
+                if (debounce_counter >= 4'd5) begin
+                    fault_valid <= 1'b1;
+                end else begin
+                    debounce_counter <= debounce_counter + 1'b1;
+                    fault_valid <= 1'b0;
+                end
+            end else begin
+                debounce_counter <= 4'd0;
+                fault_valid <= 1'b0;
+            end
+        end
+    end
+
     // Combinational logic for fault aggregation and priority (Section 4.4)
     always_comb begin
         // Default assignments (No Fault)
@@ -36,10 +64,8 @@ module fault_event_engine(
         fault_code_bus_next   = 3'b000;
         buzzer_pattern_next   = 2'b00;
 
-        // Check if any fault is active
-        if (overtemperature || overcurrent || overvoltage || 
-            undervoltage || fan_failure || sensor_failure || 
-            communication_timeout) begin
+        // Check if fault has been validated by debounce timer
+        if (fault_valid) begin
             
             fault_interrupt_next = 1'b1;
 

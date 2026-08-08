@@ -52,7 +52,7 @@ module tb_fee();
     // 5. Test Sequence (Stimulus)
     initial begin
         $display("===========================================");
-        $display("  STARTING FEE TESTBENCH (Questa/ModelSim) ");
+        $display("  STARTING FEE TESTBENCH (2 Scenarios) ");
         $display("===========================================");
 
         // Initialize all inputs to 0
@@ -71,49 +71,31 @@ module tb_fee();
         reset_n = 1;
         #20;
         
-        // --- 1. Fault clear sequence tested (Section 4.5 Requirement) ---
+        // --- SCENARIO 1: Priority Handling, Multiple Faults & Clear Sequence ---
+        $display("\n--- SCENARIO 1: Priority Handling, Multiple Faults & Clear Sequence ---");
         // Ensure everything is zero at startup
         if (fault_interrupt == 0 && shutdown_request == 0)
             $display("[%0t] PASS: Outputs clear at startup.", $time);
             
-        // --- 2. Single Fault Test (Warning) ---
+        // 1. Inject first fault
         $display("[%0t] Injecting fan_failure...", $time);
         fan_failure = 1;
-        #20; // Wait 1 clock cycle to propagate through register
+        #120; // Wait >5 clock cycles for debounce
         if (warning_request == 1 && fault_code_bus == 3'b110)
             $display("[%0t] PASS: fan_failure recognized correctly.", $time);
             
-        // Clear fault to test fault clear sequence
-        fan_failure = 0;
-        #20;
-        if (fault_interrupt == 0 && warning_request == 0)
-            $display("[%0t] PASS: Fault clear sequence working.", $time);
-        
-        // --- 3. Single Fault Test (Critical) ---
-        $display("[%0t] Injecting overtemperature...", $time);
-        overtemperature = 1;
-        #20;
-        if (shutdown_request == 1 && fault_code_bus == 3'b001)
-            $display("[%0t] PASS: overtemperature recognized correctly.", $time);
-        overtemperature = 0;
-        #20;
-
-        // --- 4. Multiple simultaneous faults tested & Priority handling verified ---
-        // Section 4.5 Requirements
-        // If we have overvoltage (priority 3), sensor_failure (priority 4), and fan_failure (priority 6)
-        // overvoltage should win.
-        $display("[%0t] Injecting simultaneous faults (overvoltage, sensor_failure, fan_failure)...", $time);
+        // 2. Add simultaneous faults
+        $display("[%0t] Injecting simultaneous faults (overvoltage, sensor_failure)...", $time);
         overvoltage = 1;
         sensor_failure = 1;
-        fan_failure = 1;
-        #20;
+        #20; // Debounce already active from fan_failure, priority shift is instant
         
         if (shutdown_request == 1 && fault_code_bus == 3'b011) 
             $display("[%0t] PASS: Priority handling verified (overvoltage > sensor/fan).", $time);
         else 
             $display("[%0t] FAIL: Priority logic failed.", $time);
             
-        // Now inject overcurrent (priority 2), it should override overvoltage
+        // 3. Inject highest priority
         $display("[%0t] Injecting higher priority overcurrent...", $time);
         overcurrent = 1;
         #20;
@@ -123,19 +105,52 @@ module tb_fee();
         else
             $display("[%0t] FAIL: Priority logic failed.", $time);
             
-        // Clear all faults
+        // 4. Test Fault Clear Sequence
+        $display("[%0t] Clearing all faults to test clear sequence...", $time);
         overcurrent = 0;
         overvoltage = 0;
         sensor_failure = 0;
         fan_failure = 0;
         #40;
+        if (fault_interrupt == 0 && warning_request == 0)
+            $display("[%0t] PASS: Fault clear sequence working.", $time);
         
-        $display("===========================================");
+        // --- SCENARIO 2: Fault Debounce Test ---
+        $display("\n--- SCENARIO 2: Fault Debounce Test ---");
+        $display("[%0t] Injecting short 3-cycle glitch on overtemperature...", $time);
+        overtemperature = 1;
+        #60; // Wait 3 clock cycles (less than the 5 required)
+        overtemperature = 0; // Clear the glitch
+        
+        #40; // wait 2 more cycles to check
+        
+        // If debounce works, system should not have reacted
+        if (shutdown_request == 1) begin
+            $display("[%0t] FAIL: System reacted to a short glitch! Debounce failed.", $time);
+        end else begin
+            $display("[%0t] PASS: System safely ignored the 3-cycle glitch.", $time);
+        end
+        
+        $display("[%0t] Injecting sustained overtemperature fault...", $time);
+        overtemperature = 1;
+        #120; // Wait >5 clock cycles
+        
+        if (shutdown_request == 1) begin
+            $display("[%0t] PASS: System correctly reacted to sustained fault.", $time);
+        end else begin
+            $display("[%0t] FAIL: System ignored sustained fault.", $time);
+        end
+        
+        overtemperature = 0;
+        #40;
+        
+        $display("\n===========================================");
         $display("  FEE TESTBENCH COMPLETED ");
         $display("===========================================");
         
         // Stop simulation
         $stop;
     end
+
 
 endmodule
