@@ -69,7 +69,7 @@ module tb_fee();
         // Wait and apply reset
         #30;
         reset_n = 1;
-        #20;
+        #30;
         
         // --- SCENARIO 1: Priority Handling, Multiple Faults & Clear Sequence ---
         $display("\n--- SCENARIO 1: Priority Handling, Multiple Faults & Clear Sequence ---");

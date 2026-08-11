@@ -64,11 +64,9 @@ set_global_assignment -name EDA_NATIVELINK_SIMULATION_TEST_BENCH tb_fsm -section
 set_global_assignment -name EDA_TEST_BENCH_NAME tb_fsm -section_id eda_simulation
 set_global_assignment -name EDA_DESIGN_INSTANCE_NAME NA -section_id tb_fsm
 set_global_assignment -name EDA_TEST_BENCH_MODULE_NAME tb_fsm -section_id tb_fsm
-set_global_assignment -name EDA_TEST_BENCH_FILE ../testbench/tb_fsm.sv -section_id tb_fsm
 set_global_assignment -name EDA_TEST_BENCH_NAME tb_fee -section_id eda_simulation
 set_global_assignment -name EDA_DESIGN_INSTANCE_NAME NA -section_id tb_fee
 set_global_assignment -name EDA_TEST_BENCH_MODULE_NAME tb_fee -section_id tb_fee
-set_global_assignment -name EDA_TEST_BENCH_FILE ../testbench/tb_fee.sv -section_id tb_fee
 set_global_assignment -name FLOW_ENABLE_POWER_ANALYZER ON
 set_global_assignment -name POWER_DEFAULT_INPUT_IO_TOGGLE_RATE "12.5 %"
 set_global_assignment -name PARTITION_NETLIST_TYPE SOURCE -section_id Top
@@ -78,3 +76,5 @@ set_global_assignment -name SYSTEMVERILOG_FILE ../hdl/portable_emergency_power_u
 set_global_assignment -name SYSTEMVERILOG_FILE ../hdl/fsm.sv
 set_global_assignment -name SYSTEMVERILOG_FILE ../hdl/fee.sv
 set_instance_assignment -name PARTITION_HIERARCHY root_partition -to | -section_id Top
+set_global_assignment -name EDA_TEST_BENCH_FILE ../testbench/tb_fsm.sv -section_id tb_fsm
+set_global_assignment -name EDA_TEST_BENCH_FILE ../testbench/tb_fee.sv -section_id tb_fee

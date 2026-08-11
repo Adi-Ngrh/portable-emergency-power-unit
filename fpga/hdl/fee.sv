@@ -42,7 +42,7 @@ module fault_event_engine(
             fault_valid <= 1'b0;
         end else begin
             if (any_fault) begin
-                if (debounce_counter >= 4'd5) begin
+                if (debounce_counter >= 4'd4) begin
                     fault_valid <= 1'b1;
                 end else begin
                     debounce_counter <= debounce_counter + 1'b1;

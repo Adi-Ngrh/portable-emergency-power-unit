@@ -18,6 +18,5 @@ Sim dir               :  simulation\questa
 
 Info: Starting NativeLink simulation with Questa Altera FPGA software
 Sourced NativeLink script c:/altera_lite/25.1std/quartus/common/tcl/internal/nativelink/modelsim.tcl
-Warning: File portable-emergency-power-unit_run_msim_rtl_verilog.do already exists - backing up current file as portable-emergency-power-unit_run_msim_rtl_verilog.do.bak4
 Info: Spawning Questa Altera FPGA Simulation software 
 Info: NativeLink simulation flow was successful
