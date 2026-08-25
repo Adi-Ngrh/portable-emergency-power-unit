@@ -75,6 +75,7 @@ typedef enum logic [6:0]
 } state_t;
 state_t current_state;
 state_t next_state;
+logic battery_fault_latch;
 
 // temporary outputs registers
 logic system_enable_next;
@@ -156,7 +157,7 @@ always_comb begin
 			 if (charger_connected_sync && battery_fault_latch) begin
 				  next_state = RECOVERY;
 			 end
-			 shutdown_signal_next	= 1'b1;
+			 shutdown_signal_next = 1'b1;
 		end
 
 		// RECOVERY: Device charges safely while keeping main system disabled.
@@ -179,8 +180,6 @@ end
 
 
 
-logic battery_fault_latch;
-
 // block to update current state on clock edge or reset signal
 always_ff @(posedge clk or negedge reset_n) begin
 	// reset button bypass other logics (active-low)
@@ -193,7 +192,9 @@ always_ff @(posedge clk or negedge reset_n) begin
 		// Latch battery faults to ensure RECOVERY is only used for dead batteries
 		if (battery_critical_sync || battery_low_sync) begin
 			battery_fault_latch <= 1'b1;
-		end
+		end else if (next_state == NORMAL) begin
+            battery_fault_latch <= 1'b0;
+        end
 	end
 end
 

@@ -15,8 +15,8 @@ module portable_emergency_power_unit (
     input  logic sensor_failure,
     input  logic communication_timeout,
     input  logic charger_connected,
-    input  logic manual_shutdown_btn,
-    
+    input  logic manual_shutdown,
+
     // External System Outputs
     output logic system_enable,
     output logic warning_led,
@@ -24,22 +24,14 @@ module portable_emergency_power_unit (
     output logic buzzer_alert,
     output logic recovery_mode,
     output logic [6:0] state_debug_bus,
-    
+
     // FEE Specific Outputs
     output logic fault_interrupt,
+    output logic shutdown_request,
+    output logic warning_request,
     output logic [2:0] fault_code_bus,
     output logic [1:0] buzzer_pattern
 );
-
-    // ==========================================
-    // Internal Wires for Glue Logic
-    // ==========================================
-    logic fee_shutdown_request;
-    logic fee_warning_request;
-    
-    // Glue logic: FSM shuts down if user presses button OR if FEE requests shutdown
-    logic combined_shutdown;
-    assign combined_shutdown = manual_shutdown_btn | fee_shutdown_request;
 
     // ==========================================
     // FSM (Power-State Machine) Instance
@@ -52,8 +44,8 @@ module portable_emergency_power_unit (
         .overtemp(overtemp),
         .overcurrent(overcurrent),
         .charger_connected(charger_connected),
-        .manual_shutdown(combined_shutdown), // Connected to glued signal
-        
+        .manual_shutdown(manual_shutdown),
+
         .system_enable(system_enable),
         .warning_led(warning_led),
         .shutdown_signal(shutdown_signal),
@@ -77,8 +69,8 @@ module portable_emergency_power_unit (
         .communication_timeout(communication_timeout),
         
         .fault_interrupt(fault_interrupt),
-        .shutdown_request(fee_shutdown_request), // Wired to internal logic
-        .warning_request(fee_warning_request),   // Internal logic (can be used later)
+        .shutdown_request(shutdown_request),
+        .warning_request(warning_request),
         .fault_code_bus(fault_code_bus),
         .buzzer_pattern(buzzer_pattern)
     );
