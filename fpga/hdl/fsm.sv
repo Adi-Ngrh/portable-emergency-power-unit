@@ -16,32 +16,6 @@ module power_state_machine(
 	output logic [6:0] state_debug_bus
 );
 
-
-
-// variable to store states (one-hot encoded)
-typedef enum logic [6:0] 
-{
-	OFF       = 7'b0000001,
-	BOOT      = 7'b0000010,
-	NORMAL    = 7'b0000100,
-	WARNING   = 7'b0001000,
-	CRITICAL  = 7'b0010000,
-	SHUTDOWN  = 7'b0100000,
-	RECOVERY  = 7'b1000000
-} state_t;
-state_t current_state;
-state_t next_state;
-
-logic battery_fault_latch;
-
-// temporary outputs registers
-logic system_enable_next;
-logic warning_led_next;
-logic shutdown_signal_next;
-logic buzzer_alert_next;
-logic recovery_mode_next;
-state_t state_debug_bus_next;
-
 // synchronizer registers
 logic battery_low_raw, battery_low_sync;
 logic battery_critical_raw, battery_critical_sync;
@@ -84,6 +58,31 @@ always_ff @(posedge clk or negedge reset_n) begin
 	end
 end
 
+
+
+
+
+// variable to store states (one-hot encoded)
+typedef enum logic [6:0] 
+{
+	OFF       = 7'b0000001,
+	BOOT      = 7'b0000010,
+	NORMAL    = 7'b0000100,
+	WARNING   = 7'b0001000,
+	CRITICAL  = 7'b0010000,
+	SHUTDOWN  = 7'b0100000,
+	RECOVERY  = 7'b1000000
+} state_t;
+state_t current_state;
+state_t next_state;
+
+// temporary outputs registers
+logic system_enable_next;
+logic warning_led_next;
+logic shutdown_signal_next;
+logic buzzer_alert_next;
+logic recovery_mode_next;
+state_t state_debug_bus_next;
 
 // block to set next state
 always_comb begin
@@ -143,12 +142,12 @@ always_comb begin
 		// CRITICAL: Immediate danger. Device asserts shutdown and alarms.
 		// Transitions to SHUTDOWN only when acknowledged via manual_shutdown.
 		CRITICAL: begin
-			 shutdown_signal_next = 1'b1;
-			 warning_led_next     = 1'b1;
-			 buzzer_alert_next    = 1'b1;
-			 if (manual_shutdown_sync) begin
-				  next_state = SHUTDOWN;
-			 end
+			shutdown_signal_next = 1'b1;
+			warning_led_next     = 1'b1;
+			buzzer_alert_next    = 1'b1;
+			if (manual_shutdown_sync || battery_fault_latch) begin
+				next_state = SHUTDOWN;
+			end
 		end
 
 		// SHUTDOWN: Device is in the process of turning off.
@@ -178,6 +177,10 @@ end
 
 
 
+
+
+logic battery_fault_latch;
+
 // block to update current state on clock edge or reset signal
 always_ff @(posedge clk or negedge reset_n) begin
 	// reset button bypass other logics (active-low)
@@ -193,6 +196,8 @@ always_ff @(posedge clk or negedge reset_n) begin
 		end
 	end
 end
+
+
 
 
 
