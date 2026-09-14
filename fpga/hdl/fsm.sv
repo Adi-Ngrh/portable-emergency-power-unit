@@ -4,6 +4,7 @@ module power_state_machine(
 	input logic overtemp,
 	input logic overcurrent,
 	input logic charger_connected,
+	input logic manual_power,
 	input logic manual_shutdown,
 	input logic reset_n,
 	input logic clk,
@@ -22,6 +23,7 @@ logic battery_critical_raw, battery_critical_sync;
 logic overtemp_raw, overtemp_sync;
 logic overcurrent_raw, overcurrent_sync;
 logic charger_connected_raw, charger_connected_sync;
+logic manual_power_raw, manual_power_sync;
 logic manual_shutdown_raw, manual_shutdown_sync;
 
 // 2-stage synchronizer block for external inputs
@@ -37,6 +39,8 @@ always_ff @(posedge clk or negedge reset_n) begin
 		overcurrent_sync <= 1'b0;
 		charger_connected_raw <= 1'b0;
 		charger_connected_sync <= 1'b0;
+		manual_power_raw <= 1'b0;
+		manual_power_sync <= 1'b0;
 		manual_shutdown_raw <= 1'b0;
 		manual_shutdown_sync <= 1'b0;
 	end else begin
@@ -46,6 +50,7 @@ always_ff @(posedge clk or negedge reset_n) begin
 		overtemp_raw <= overtemp;
 		overcurrent_raw <= overcurrent;
 		charger_connected_raw <= charger_connected;
+		manual_power_raw <= manual_power;
 		manual_shutdown_raw <= manual_shutdown;
 		
 		// Stage 2: Capture settled signals
@@ -54,6 +59,7 @@ always_ff @(posedge clk or negedge reset_n) begin
 		overtemp_sync <= overtemp_raw;
 		overcurrent_sync <= overcurrent_raw;
 		charger_connected_sync <= charger_connected_raw;
+		manual_power_sync <= manual_power_raw;
 		manual_shutdown_sync <= manual_shutdown_raw;
 	end
 end
@@ -108,8 +114,10 @@ always_comb begin
 
 		// BOOT: Device is starting up. Transitions immediately to NORMAL once enabled.
 		BOOT: begin
-			 system_enable_next = 1'b1; 
-			 next_state = NORMAL; 
+			system_enable_next = 1'b0; 
+			if (manual_power_sync) begin
+				next_state = NORMAL; 
+			end
 		end
 
 		// NORMAL: Device is fully operational. 
