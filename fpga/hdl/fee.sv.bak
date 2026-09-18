@@ -78,13 +78,13 @@ logic [2:0] fault_code_bus_next;
 logic [1:0] buzzer_pattern_next;
 
 // debounce related variables (Wait 5 clock cycles to validate each fault independently)
-logic [5:0] overcurrent_counter;
-logic [5:0] overvoltage_counter;
-logic [15:0] undervoltage_counter;
-logic [15:0] overtemperature_counter;
-logic [18:0] fan_failure_counter;
-logic [15:0] sensor_failure_counter;
-logic [20:0] communication_timeout_counter;
+logic [2:0] overcurrent_counter;
+logic [2:0] overvoltage_counter;
+logic [2:0] undervoltage_counter;
+logic [2:0] overtemperature_counter;
+logic [2:0] fan_failure_counter;
+logic [2:0] sensor_failure_counter;
+logic [2:0] communication_timeout_counter;
 
 logic overcurrent_valid;
 logic overvoltage_valid;
@@ -117,9 +117,9 @@ always_ff @(posedge clk or negedge reset_n) begin
         communication_timeout_counter <= 3'd0;
         communication_timeout_valid <= 1'b0;
     end else begin
-        // overcurrent (valid at >= 1 us or 50 clock cycles)
+        // overcurrent
         if (overcurrent_sync) begin
-            if (overcurrent_counter >= 6'd50) begin
+            if (overcurrent_counter >= 3'd4) begin
                 overcurrent_valid <= 1'b1;
             end else begin
                 overcurrent_counter <= overcurrent_counter + 1'b1;
@@ -130,9 +130,9 @@ always_ff @(posedge clk or negedge reset_n) begin
             overcurrent_valid <= 1'b0;
         end
 
-        // overvoltage (valid at >= 1 us or 50 clock cycles)
+        // overvoltage
         if (overvoltage_sync) begin
-            if (overvoltage_counter >= 6'd50) begin
+            if (overvoltage_counter >= 3'd4) begin
                 overvoltage_valid <= 1'b1;
             end else begin
                 overvoltage_counter <= overvoltage_counter + 1'b1;
@@ -143,9 +143,9 @@ always_ff @(posedge clk or negedge reset_n) begin
             overvoltage_valid <= 1'b0;
         end
 
-        // undervoltage (valid at >= 1 ms or 50000 clock cycles)
+        // undervoltage
         if (undervoltage_sync) begin
-            if (undervoltage_counter >= 16'd50000) begin
+            if (undervoltage_counter >= 3'd4) begin
                 undervoltage_valid <= 1'b1;
             end else begin
                 undervoltage_counter <= undervoltage_counter + 1'b1;
@@ -156,9 +156,9 @@ always_ff @(posedge clk or negedge reset_n) begin
             undervoltage_valid <= 1'b0;
         end
 
-        // overtemperature (valid at >= 1 ms or 50000 clock cycles)
+        // overtemperature
         if (overtemperature_sync) begin
-            if (overtemperature_counter >= 16'd50000) begin
+            if (overtemperature_counter >= 3'd4) begin
                 overtemperature_valid <= 1'b1;
             end else begin
                 overtemperature_counter <= overtemperature_counter + 1'b1;
@@ -169,9 +169,9 @@ always_ff @(posedge clk or negedge reset_n) begin
             overtemperature_valid <= 1'b0;
         end
 
-        // fan_failure (valid at >= 10 ms or 500000 clock cycles)
+        // fan_failure
         if (fan_failure_sync) begin
-            if (fan_failure_counter >= 19'd500000) begin
+            if (fan_failure_counter >= 3'd4) begin
                 fan_failure_valid <= 1'b1;
             end else begin
                 fan_failure_counter <= fan_failure_counter + 1'b1;
@@ -182,9 +182,9 @@ always_ff @(posedge clk or negedge reset_n) begin
             fan_failure_valid <= 1'b0;
         end
 
-        // sensor_failure (valid at >= 1 ms or 50000 clock cycles)
+        // sensor_failure
         if (sensor_failure_sync) begin
-            if (sensor_failure_counter >= 16'd50000) begin
+            if (sensor_failure_counter >= 3'd4) begin
                 sensor_failure_valid <= 1'b1;
             end else begin
                 sensor_failure_counter <= sensor_failure_counter + 1'b1;
@@ -195,9 +195,9 @@ always_ff @(posedge clk or negedge reset_n) begin
             sensor_failure_valid <= 1'b0;
         end
 
-        // communication_timeout (valid at >= 30 ms or 1500000 clock cycles)
+        // communication_timeout
         if (communication_timeout_sync) begin
-            if (communication_timeout_counter >= 21'd1500000) begin
+            if (communication_timeout_counter >= 3'd4) begin
                 communication_timeout_valid <= 1'b1;
             end else begin
                 communication_timeout_counter <= communication_timeout_counter + 1'b1;
