@@ -1,4 +1,5 @@
 module power_state_machine(
+	input logic boot_success,
 	input logic battery_low,
 	input logic battery_critical,
 	input logic overtemp,
@@ -17,57 +18,6 @@ module power_state_machine(
 	output logic [6:0] state_debug_bus
 );
 
-// synchronizer registers
-logic battery_low_raw, battery_low_sync;
-logic battery_critical_raw, battery_critical_sync;
-logic overtemp_raw, overtemp_sync;
-logic overcurrent_raw, overcurrent_sync;
-logic charger_connected_raw, charger_connected_sync;
-logic manual_power_raw, manual_power_sync;
-logic manual_shutdown_raw, manual_shutdown_sync;
-
-// 2-stage synchronizer block for external inputs
-always_ff @(posedge clk or negedge reset_n) begin
-	if (!reset_n) begin
-		battery_low_raw <= 1'b0;
-		battery_low_sync <= 1'b0;
-		battery_critical_raw <= 1'b0;
-		battery_critical_sync <= 1'b0;
-		overtemp_raw <= 1'b0;
-		overtemp_sync <= 1'b0;
-		overcurrent_raw <= 1'b0;
-		overcurrent_sync <= 1'b0;
-		charger_connected_raw <= 1'b0;
-		charger_connected_sync <= 1'b0;
-		manual_power_raw <= 1'b0;
-		manual_power_sync <= 1'b0;
-		manual_shutdown_raw <= 1'b0;
-		manual_shutdown_sync <= 1'b0;
-	end else begin
-		// Stage 1: Capture raw inputs (susceptible to metastability)
-		battery_low_raw <= battery_low;
-		battery_critical_raw <= battery_critical;
-		overtemp_raw <= overtemp;
-		overcurrent_raw <= overcurrent;
-		charger_connected_raw <= charger_connected;
-		manual_power_raw <= manual_power;
-		manual_shutdown_raw <= manual_shutdown;
-		
-		// Stage 2: Capture settled signals
-		battery_low_sync <= battery_low_raw;
-		battery_critical_sync <= battery_critical_raw;
-		overtemp_sync <= overtemp_raw;
-		overcurrent_sync <= overcurrent_raw;
-		charger_connected_sync <= charger_connected_raw;
-		manual_power_sync <= manual_power_raw;
-		manual_shutdown_sync <= manual_shutdown_raw;
-	end
-end
-
-
-
-
-
 // variable to store states (one-hot encoded)
 typedef enum logic [6:0] 
 {
@@ -81,7 +31,22 @@ typedef enum logic [6:0]
 } state_t;
 state_t current_state;
 state_t next_state;
-logic battery_fault_latch;
+
+// synchronizer registers
+logic boot_success_raw, boot_success_sync;
+logic battery_low_raw, battery_low_sync;
+logic battery_critical_raw, battery_critical_sync;
+logic overtemp_raw, overtemp_sync;
+logic overcurrent_raw, overcurrent_sync;
+logic charger_connected_raw, charger_connected_sync;
+logic manual_power_raw, manual_power_sync, manual_power_sync_prev;
+logic manual_shutdown_raw, manual_shutdown_sync;
+
+// timer related variables
+logic timer_start;
+logic [28:0] timer_counter;
+logic [28:0] timer_threshold;
+logic timer_finish;
 
 // temporary outputs registers
 logic system_enable_next;
@@ -91,32 +56,117 @@ logic buzzer_alert_next;
 logic recovery_mode_next;
 state_t state_debug_bus_next;
 
+logic battery_fault_latch;	// differentiate battery related fault
+logic manual_power_pressed; // when boot fail, keep system at OFF state until fresh trigger
+
+
+
+
+
+// 2-stage synchronizer block for external inputs
+always_ff @(posedge clk or negedge reset_n) begin
+	if (!reset_n) begin
+		boot_success_raw <= 1'b0; 
+		boot_success_sync <= 1'b0;
+		battery_low_raw <= 1'b0;
+		battery_low_sync <= 1'b0;
+		battery_critical_raw <= 1'b0;
+		battery_critical_sync <= 1'b0;
+		overtemp_raw <= 1'b0;
+		overtemp_sync <= 1'b0;
+		overcurrent_raw <= 1'b0;
+		overcurrent_sync <= 1'b0;
+		charger_connected_raw <= 1'b0;
+		charger_connected_sync <= 1'b0;
+		manual_power_raw <= 1'b0;
+		manual_power_sync <= 1'b0;
+		manual_power_sync_prev <= 1'b0;
+		manual_shutdown_raw <= 1'b0;
+		manual_shutdown_sync <= 1'b0;
+	end else begin
+		// Stage 1: Capture raw inputs (susceptible to metastability)
+		boot_success_raw <= boot_success;
+		battery_low_raw <= battery_low;
+		battery_critical_raw <= battery_critical;
+		overtemp_raw <= overtemp;
+		overcurrent_raw <= overcurrent;
+		charger_connected_raw <= charger_connected;
+		manual_power_raw <= manual_power;
+		manual_shutdown_raw <= manual_shutdown;
+		
+		// Stage 2: Capture settled signals
+		boot_success_sync <= boot_success_raw;
+		battery_low_sync <= battery_low_raw;
+		battery_critical_sync <= battery_critical_raw;
+		overtemp_sync <= overtemp_raw;
+		overcurrent_sync <= overcurrent_raw;
+		charger_connected_sync <= charger_connected_raw;
+		manual_power_sync <= manual_power_raw;
+		manual_shutdown_sync <= manual_shutdown_raw;
+		
+		// record previous manual_power signal
+		manual_power_sync_prev <= manual_power_sync;
+	end
+end
+
+assign manual_power_pressed = manual_power_sync & ~manual_power_sync_prev;
+
+
+
+
+
+// reusable timer block
+always_ff @(posedge clk or negedge reset_n) begin
+	if (!reset_n) begin
+		timer_counter <= 29'b0;
+		timer_finish <= 1'b0;
+	end else if (!timer_start) begin
+		timer_counter <= 29'b0;
+		timer_finish <= 1'b0;
+	end else if (timer_counter >= timer_threshold) begin
+		timer_finish <= 1'b1;
+	end else begin
+		timer_counter <= timer_counter + 1'b1;
+		timer_finish <= 1'b0;
+	end
+end
+
+
+
+
+
 // block to set next state
 always_comb begin
 	// default assignment
 	next_state = current_state; 
-	system_enable_next   = 1'b0;
-	warning_led_next     = 1'b0;
+	system_enable_next = 1'b0;
+	timer_start = 1'b0;
+	timer_threshold = 29'd0;
+	warning_led_next = 1'b0;
 	shutdown_signal_next = 1'b0;
-	buzzer_alert_next    = 1'b0;
-	recovery_mode_next   = 1'b0;
+	buzzer_alert_next = 1'b0;
+	recovery_mode_next = 1'b0;
 	state_debug_bus_next = current_state;
 
 	// state evaluation
 	case (current_state)
             
-		// OFF: Device is off. Transitions to BOOT when a charger is plugged in.
+		// OFF: Device is off. Transitions to BOOT when power button is manually pressed.
 		OFF: begin
-			 if (charger_connected_sync) begin
-				  next_state = BOOT;
-			 end
+			if (manual_power_pressed) begin
+				next_state = BOOT;
+			end
 		end
 
 		// BOOT: Device is starting up. Transitions immediately to NORMAL once enabled.
 		BOOT: begin
-			system_enable_next = 1'b0; 
-			if (manual_power_sync) begin
-				next_state = NORMAL; 
+			// boot timeout (valid at >= 10 seconds or 500000000 clock cycles)
+			timer_threshold = 29'd500000000;
+			timer_start = 1'b1;
+			if (boot_success_sync) begin
+				next_state = NORMAL;
+			end else if (timer_finish) begin
+				next_state = OFF;
 			end
 		end
 
@@ -192,8 +242,8 @@ end
 always_ff @(posedge clk or negedge reset_n) begin
 	// reset button bypass other logics (active-low)
 	if (!reset_n) begin
-		current_state <= OFF;
 		battery_fault_latch <= 1'b0;
+		current_state <= OFF;
 	end else begin
 		current_state <= next_state;
 		

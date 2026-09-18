@@ -102,19 +102,19 @@ assign any_fault = (overtemperature_valid || overcurrent_valid || overvoltage_va
 // debounce logic
 always_ff @(posedge clk or negedge reset_n) begin
     if (!reset_n) begin
-        overcurrent_counter <= 3'd0;
+        overcurrent_counter <= 6'd0;
         overcurrent_valid <= 1'b0;
-        overvoltage_counter <= 3'd0;
+        overvoltage_counter <= 6'd0;
         overvoltage_valid <= 1'b0;
-        undervoltage_counter <= 3'd0;
+        undervoltage_counter <= 16'd0;
         undervoltage_valid <= 1'b0;
-        overtemperature_counter <= 3'd0;
+        overtemperature_counter <= 16'd0;
         overtemperature_valid <= 1'b0;
-        fan_failure_counter <= 3'd0;
+        fan_failure_counter <= 19'd0;
         fan_failure_valid <= 1'b0;
-        sensor_failure_counter <= 3'd0;
+        sensor_failure_counter <= 16'd0;
         sensor_failure_valid <= 1'b0;
-        communication_timeout_counter <= 3'd0;
+        communication_timeout_counter <= 21'd0;
         communication_timeout_valid <= 1'b0;
     end else begin
         // overcurrent (valid at >= 1 us or 50 clock cycles)
