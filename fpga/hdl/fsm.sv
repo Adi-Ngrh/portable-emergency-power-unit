@@ -71,8 +71,7 @@ logic critical_clear_next;
 logic buzzer_alert_next;
 logic recovery_mode_next;
 
-logic battery_fault_latch; // remembers a shutdown was battery-caused, so STATE_SHUTDOWN
-                           // routes to STATE_RECOVERY instead of STATE_OFF on exit
+logic battery_fault_latch; // mark shutdown caused by battery
 logic manual_power_pressed; // when boot fail, keep system at STATE_OFF state until fresh trigger
 logic shutdown_trigger;
 logic warning_trigger;
@@ -81,7 +80,7 @@ logic critical_retry_allowed; // gate for leaving STATE_CRITICAL: a retry was as
 logic [1:0] retry_count; // consecutive retries out of STATE_CRITICAL; only reset_n clears this
 localparam logic [1:0] max_retry = 2'd3;
 logic heartbeat_edge; // any toggle on mcu_heartbeat = proof the MCU is alive and running
-logic mcu_alive; // set once a heartbeat is seen; only cleared in STATE_OFF (MCU rail is off there)
+logic mcu_alive; // set once a heartbeat is seen; only cleared in STATE_OFF
 
 assign manual_power_pressed = manual_power_sync & ~manual_power_sync_prev;
 assign shutdown_trigger = manual_shutdown_sync || shutdown_request_sync || battery_critical_sync;
@@ -174,17 +173,14 @@ always_ff @(posedge clk or negedge reset_n) begin
 	end
 end
 
-// heartbeat watchdog: free-running, independent of the reusable timer above
-// since it has to keep counting across every state, not just one at a time
+// heartbeat watchdog block
 always_ff @(posedge clk or negedge reset_n) begin
 	if (!reset_n) begin
 		heartbeat_counter <= 29'b0;
 		heartbeat_timeout <= 1'b0;
 	end
 	else if (heartbeat_edge || (current_state == STATE_CRITICAL && next_state == STATE_BOOT)) begin
-		// also clear on a STATE_CRITICAL retry, so a stale timeout from the fault
-		// that caused this CRITICAL can't immediately bounce the fresh boot attempt
-		// straight back to STATE_CRITICAL before the MCU gets a chance to heartbeat
+		// also clear on a STATE_CRITICAL retry
 		heartbeat_counter <= 29'b0;
 		heartbeat_timeout <= 1'b0;
 	end
@@ -205,7 +201,7 @@ always_comb begin
 	// default assignment
 	next_state = current_state;
 	system_enable_next = 1'b0;
-	mcu_power_enable_next = 1'b1; // default: MCU stays powered; only STATE_OFF cuts it
+	mcu_power_enable_next = 1'b1; // MCU stays powered by default, only STATE_OFF cuts it
 	timer_start = 1'b0;
 	timer_threshold = 29'd0;
 	warning_led_next = 1'b0;
@@ -218,8 +214,8 @@ always_comb begin
 	// state evaluation
 	case (current_state)
             
-		// STATE_OFF: Device is off, MCU rail cut to save standby power. Transitions
-		// to STATE_BOOT when the power button is manually pressed.
+		// STATE_OFF: Device is off.
+		// Transitions to STATE_BOOT when the power button is manually pressed.
 		STATE_OFF: begin
 			mcu_power_enable_next = 1'b0; // override default: MCU stays off here
 			if (manual_power_pressed) begin
@@ -227,13 +223,9 @@ always_comb begin
 			end
 		end
 
-		// STATE_BOOT: Device is starting up. The boot timeout only starts counting
-		// once mcu_alive is set (a heartbeat has actually been seen), so a
-		// glitchy/floating boot_success read while the MCU's rail is still coming
-		// up can't be mistaken for a real boot completion. Transitions to
-		// STATE_NORMAL once boot_success arrives; the timeout still runs from
-		// STATE_BOOT entry via mcu_alive, so a fully dead MCU (no heartbeat, ever)
-		// still eventually times out back to STATE_OFF.
+		// STATE_BOOT: Device is starting up.
+		// Transitions to STATE_NORMAL once boot_success arrives.
+		// Transitions back to STATE_OFF if the boot timeout expires.
 		STATE_BOOT: begin
 			system_enable_next = 1'b1;
 			if (mcu_alive) begin
@@ -268,9 +260,7 @@ always_comb begin
 		end
 
 		// STATE_CRITICAL: Immediate danger. System block turned off, alarm asserted.
-		// Stays latched until the user presses the power button again (retry is
-		// exclusively user-triggered) and the retry budget isn't spent; reset_n is
-		// the only way to clear retry_count once max_retry is reached.
+		// Transitions to STATE_BOOT when the user retries and the retry budget isn't spent.
 		STATE_CRITICAL: begin
 			warning_led_next   = 1'b1;
 			buzzer_alert_next  = 1'b1;
@@ -280,9 +270,8 @@ always_comb begin
 			end
 		end
 
-		// STATE_SHUTDOWN: Graceful process of turning off, MCU-led with FPGA backstop.
-		// Exit to STATE_OFF after the MCU send success signal or timeout happen.
-		// Exits to STATE_RECOVERY instead of STATE_OFF when battery_fault_latch is set,
+		// STATE_SHUTDOWN: Graceful process of turning off.
+		// Transitions to STATE_RECOVERY or STATE_OFF once shutdown completes.
 		STATE_SHUTDOWN: begin
 			system_enable_next = 1'b1;
 			timer_threshold = shutdown_timeout;
@@ -304,11 +293,8 @@ always_comb begin
 			end
 		end
 
-		// STATE_RECOVERY: Reached only after a battery-caused STATE_SHUTDOWN has
-		// already finished, so the system block is already off. The MCU handles
-		// charging/remediation here; the FPGA just holds and waits. Re-enters via
-		// STATE_BOOT once battery_critical clears, rather than assuming the system
-		// is still safe to run after being off for an unknown duration.
+		// STATE_RECOVERY: Battery critical, system block already off.
+		// Transitions to STATE_BOOT once battery_critical clears.
 		STATE_RECOVERY: begin
 			recovery_mode_next = 1'b1;
 			if (!battery_critical_sync) begin
@@ -322,10 +308,7 @@ always_comb begin
 		
 	endcase
 	
-	// MCU has proven it was alive at some point, then stopped heartbeating: treat
-	// as a dead MCU and go straight to STATE_CRITICAL, same as any other critical
-	// fault. Excluded in STATE_OFF (MCU is intentionally unpowered there) and
-	// STATE_CRITICAL (already there).
+	
 	if (mcu_alive && heartbeat_timeout && current_state != STATE_OFF && current_state != STATE_CRITICAL) begin
 		next_state = STATE_CRITICAL;
 	end
@@ -355,22 +338,19 @@ always_ff @(posedge clk or negedge reset_n) begin
 	end else begin
 		current_state <= next_state;
 
-		// Latch a battery-caused shutdown so STATE_SHUTDOWN knows to route to
-		// STATE_RECOVERY instead of STATE_OFF; cleared once back in STATE_NORMAL.
+		// handling shutdown caused by battery
 		if (battery_critical_sync) begin
 			battery_fault_latch <= 1'b1;
 		end else if (next_state == STATE_NORMAL) begin
 			battery_fault_latch <= 1'b0;
 		end
 
-		// Count retries out of STATE_CRITICAL; only reset_n clears this counter
+		// count retries out of STATE_CRITICAL; only reset_n clears this counter
 		if (current_state == STATE_CRITICAL && next_state == STATE_BOOT) begin
 			retry_count <= retry_count + 1'b1;
 		end
 
-		// Track whether the MCU has proven it's alive (heartbeat seen); stays set
-		// across every powered state, and is cleared in STATE_OFF or on a
-		// STATE_CRITICAL retry (fresh boot attempt needs a fresh heartbeat)
+		// track MCU heartbeat
 		if (current_state == STATE_OFF || (current_state == STATE_CRITICAL && next_state == STATE_BOOT)) begin
 			mcu_alive <= 1'b0;
 		end else if (heartbeat_edge) begin
