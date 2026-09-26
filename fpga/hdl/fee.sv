@@ -2,7 +2,7 @@ module fault_event_engine(
     input logic clk,
     input logic reset_n,
     
-    // Input Fault Signals (Section 4.2)
+    // input signals
     input logic overcurrent,
     input logic overvoltage,
     input logic undervoltage,
@@ -10,12 +10,12 @@ module fault_event_engine(
     input logic fan_failure,
     input logic sensor_failure,
     input logic communication_timeout,
+	 input logic critical_clear,
     
-    // Output Signals (Section 4.3)
+    // output signals
     output logic shutdown_response,
     output logic warning_response,
 	 output logic critical_response,
-	 output logic critical_clear,
     output logic [2:0] fault_code_bus,
     output logic [1:0] buzzer_pattern
 );
@@ -28,25 +28,26 @@ logic overtemperature_raw, overtemperature_sync;
 logic fan_failure_raw, fan_failure_sync;
 logic sensor_failure_raw, sensor_failure_sync;
 logic communication_timeout_raw, communication_timeout_sync;
+logic critical_clear_raw, critical_clear_sync;
 
 // code bus & buzzer pattern
 typedef enum logic [2:0]
 {
-	CODE_DEFAULT = 3'b000;
-	CODE_OVERCURRENT = 3'b001;
-	CODE_OVERVOLTAGE = 3'b010;
-	CODE_OVERTEMPERATURE = 3'b011;
-	CODE_SENSOR_FAILURE = 3'b100;
-	CODE_UNDERVOLTAGE = 3'b101;
-	CODE_FAN_FAILURE = 3'b110;
-	CODE_COMMUNICATION_TIMEOUT = 3'b111;
+	CODE_DEFAULT = 3'b000,
+	CODE_OVERCURRENT = 3'b001,
+	CODE_OVERVOLTAGE = 3'b010,
+	CODE_OVERTEMPERATURE = 3'b011,
+	CODE_SENSOR_FAILURE = 3'b100,
+	CODE_UNDERVOLTAGE = 3'b101,
+	CODE_FAN_FAILURE = 3'b110,
+	CODE_COMMUNICATION_TIMEOUT = 3'b111
 } code_e;
 typedef enum logic [1:0]
 {
-	PATTERN_DEFAULT = 2'b00;
-	PATTERN_WARNING = 2'b01;
-	PATTERN_SHUTDOWN = 2'b10;
-	PATTERN_CRITICAL = 2'b11;
+	PATTERN_DEFAULT = 2'b00,
+	PATTERN_WARNING = 2'b01,
+	PATTERN_SHUTDOWN = 2'b10,
+	PATTERN_CRITICAL = 2'b11
 } pattern_e;
 
 // debounce related variables
@@ -75,15 +76,14 @@ logic communication_timeout_valid;
 logic any_fault;
 
 // next state variables for outputs
-logic fault_interrupt_next;
 logic warning_response_next;
 logic shutdown_response_next;
 logic critical_response_next;
 logic critical_clear_next;
-code_e [2:0] fault_code_bus_next;
-pattern_e [1:0] buzzer_pattern_next;
+code_e fault_code_bus_next;
+pattern_e buzzer_pattern_next;
 
-assign any_fault = (overcurrent_valid || overvoltage_valid || overtemperature_valid || sensor_failure_valid
+assign any_fault = (overcurrent_valid || overvoltage_valid || overtemperature_valid || sensor_failure_valid ||
 							undervoltage_valid || fan_failure_valid || communication_timeout_valid);
 assign warning_response_next = undervoltage_valid || fan_failure_valid || communication_timeout_valid;
 assign shutdown_response_next = overtemperature_valid || sensor_failure_valid;
@@ -110,7 +110,10 @@ always_ff @(posedge clk or negedge reset_n) begin
         sensor_failure_sync <= 1'b0;
         communication_timeout_raw <= 1'b0;
         communication_timeout_sync <= 1'b0;
-    end else begin
+		  critical_clear_raw <= 1'b0;
+		  critical_clear_sync <= 1'b0;
+    end 
+	 else begin
         // Stage 1: Capture raw inputs (susceptible to metastability)
         overcurrent_raw <= overcurrent;
         overvoltage_raw <= overvoltage;
@@ -119,6 +122,7 @@ always_ff @(posedge clk or negedge reset_n) begin
         fan_failure_raw <= fan_failure;
         sensor_failure_raw <= sensor_failure;
         communication_timeout_raw <= communication_timeout;
+		  critical_clear_raw <= critical_clear;
 
         // Stage 2: Capture settled signals
         overcurrent_sync <= overcurrent_raw;
@@ -128,6 +132,7 @@ always_ff @(posedge clk or negedge reset_n) begin
         fan_failure_sync <= fan_failure_raw;
         sensor_failure_sync <= sensor_failure_raw;
         communication_timeout_sync <= communication_timeout_raw;
+		  critical_clear_sync <= critical_clear_raw;
     end
 end
 
@@ -299,18 +304,31 @@ always_ff @(posedge clk or negedge reset_n) begin
     if (!reset_n) begin
         shutdown_response <= 1'b0;
         warning_response  <= 1'b0;
-		  critical_response <= 1'b0;
-		  critical_clear <= 1'b0;
         fault_code_bus   <= 3'b000;
         buzzer_pattern   <= 2'b00;
     end else begin
         shutdown_response <= shutdown_response_next;
         warning_response  <= warning_response_next;
-		  critical_response <= critical_response_next;
-		  critical_clear <= critical_clear_next;
         fault_code_bus   <= fault_code_bus_next;
         buzzer_pattern   <= buzzer_pattern_next;
     end
+end
+
+
+
+
+
+// latch so critical response stay high until fault clear
+always_ff @(posedge clk or negedge reset_n) begin
+	if (!reset_n) begin
+		critical_response <= 1'b0;
+	end
+	else if (critical_response_next) begin
+		critical_response <= 1'b1;
+	end
+	else if (critical_clear) begin
+		critical_response <= 1'b0;
+	end
 end
 
 endmodule
