@@ -84,7 +84,7 @@ logic mcu_alive; // set once a heartbeat is seen; only cleared in STATE_OFF
 
 assign manual_power_pressed = manual_power_sync & ~manual_power_sync_prev;
 assign shutdown_trigger = manual_shutdown_sync || shutdown_request_sync || battery_critical_sync;
-assign warning_trigger = warning_request_sync;
+assign warning_trigger = warning_request_sync || battery_low_sync;
 assign critical_trigger = critical_request_sync;
 assign critical_retry_allowed = manual_power_pressed && (retry_count < max_retry);
 assign heartbeat_edge = mcu_heartbeat_sync ^ mcu_heartbeat_sync_prev;
@@ -228,11 +228,8 @@ always_comb begin
 		// Transitions back to STATE_OFF if the boot timeout expires.
 		STATE_BOOT: begin
 			system_enable_next = 1'b1;
-			if (mcu_alive) begin
-				// boot timeout (valid at >= 10 seconds or 500000000 clock cycles)
-				timer_threshold = boot_timeout;
-				timer_start = 1'b1;
-			end
+			timer_threshold = boot_timeout;
+			timer_start = 1'b1;
 			if (mcu_alive && boot_success_sync) begin
 				next_state = STATE_NORMAL;
 			end
