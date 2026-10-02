@@ -21,7 +21,6 @@ module tb_fsm_5;
 
     // dut outputs
     logic system_enable;
-    logic mcu_power_enable;
     logic warning_led;
     logic shutdown_ack;
     logic critical_clear;
@@ -55,7 +54,6 @@ module tb_fsm_5;
         .reset_n           (reset_n),
         .clk               (clk),
         .system_enable     (system_enable),
-        .mcu_power_enable  (mcu_power_enable),
         .warning_led       (warning_led),
         .shutdown_ack      (shutdown_ack),
         .critical_clear    (critical_clear),

@@ -1,5 +1,5 @@
 Analysis & Synthesis report for portable-emergency-power-unit
-Tue Aug  4 15:48:21 2026
+Fri Oct  2 18:11:48 2026
 Quartus Prime Version 25.1std.0 Build 1129 10/21/2025 SC Lite Edition
 
 
@@ -14,10 +14,10 @@ Quartus Prime Version 25.1std.0 Build 1129 10/21/2025 SC Lite Edition
   6. Analysis & Synthesis Resource Usage Summary
   7. Analysis & Synthesis Resource Utilization by Entity
   8. State Machine - |portable_emergency_power_unit|power_state_machine:u_fsm|current_state
-  9. General Register Statistics
- 10. Inverted Register Statistics
- 11. Multiplexer Restructuring Statistics (Restructuring Performed)
- 12. Port Connectivity Checks: "fault_event_engine:u_fee"
+  9. Registers Removed During Synthesis
+ 10. General Register Statistics
+ 11. Inverted Register Statistics
+ 12. Multiplexer Restructuring Statistics (Restructuring Performed)
  13. Post-Synthesis Netlist Statistics for Top Partition
  14. Elapsed Time Per Partition
  15. Analysis & Synthesis Messages
@@ -47,16 +47,16 @@ on the Quartus Prime software download page.
 +--------------------------------------------------------------------------------------+
 ; Analysis & Synthesis Summary                                                         ;
 +------------------------------------+-------------------------------------------------+
-; Analysis & Synthesis Status        ; Successful - Tue Aug  4 15:48:21 2026           ;
+; Analysis & Synthesis Status        ; Successful - Fri Oct  2 18:11:48 2026           ;
 ; Quartus Prime Version              ; 25.1std.0 Build 1129 10/21/2025 SC Lite Edition ;
 ; Revision Name                      ; portable-emergency-power-unit                   ;
 ; Top-level Entity Name              ; portable_emergency_power_unit                   ;
 ; Family                             ; MAX 10                                          ;
-; Total logic elements               ; 55                                              ;
-;     Total combinational functions  ; 31                                              ;
-;     Dedicated logic registers      ; 39                                              ;
-; Total registers                    ; 39                                              ;
-; Total pins                         ; 31                                              ;
+; Total logic elements               ; 306                                             ;
+;     Total combinational functions  ; 261                                             ;
+;     Dedicated logic registers      ; 234                                             ;
+; Total registers                    ; 234                                             ;
+; Total pins                         ; 41                                              ;
 ; Total virtual pins                 ; 0                                               ;
 ; Total memory bits                  ; 0                                               ;
 ; Embedded Multiplier 9-bit elements ; 0                                               ;
@@ -185,30 +185,30 @@ on the Quartus Prime software download page.
 +---------------------------------------------+-----------+
 ; Resource                                    ; Usage     ;
 +---------------------------------------------+-----------+
-; Estimated Total logic elements              ; 55        ;
+; Estimated Total logic elements              ; 306       ;
 ;                                             ;           ;
-; Total combinational functions               ; 31        ;
+; Total combinational functions               ; 261       ;
 ; Logic element usage by number of LUT inputs ;           ;
-;     -- 4 input functions                    ; 24        ;
-;     -- 3 input functions                    ; 4         ;
-;     -- <=2 input functions                  ; 3         ;
+;     -- 4 input functions                    ; 73        ;
+;     -- 3 input functions                    ; 21        ;
+;     -- <=2 input functions                  ; 167       ;
 ;                                             ;           ;
 ; Logic elements by mode                      ;           ;
-;     -- normal mode                          ; 31        ;
-;     -- arithmetic mode                      ; 0         ;
+;     -- normal mode                          ; 112       ;
+;     -- arithmetic mode                      ; 149       ;
 ;                                             ;           ;
-; Total registers                             ; 39        ;
-;     -- Dedicated logic registers            ; 39        ;
+; Total registers                             ; 234       ;
+;     -- Dedicated logic registers            ; 234       ;
 ;     -- I/O registers                        ; 0         ;
 ;                                             ;           ;
-; I/O pins                                    ; 31        ;
+; I/O pins                                    ; 41        ;
 ;                                             ;           ;
 ; Embedded Multiplier 9-bit elements          ; 0         ;
 ;                                             ;           ;
 ; Maximum fan-out node                        ; clk~input ;
-; Maximum fan-out                             ; 39        ;
-; Total fan-out                               ; 281       ;
-; Average fan-out                             ; 2.13      ;
+; Maximum fan-out                             ; 234       ;
+; Total fan-out                               ; 1758      ;
+; Average fan-out                             ; 3.05      ;
 +---------------------------------------------+-----------+
 
 
@@ -217,27 +217,37 @@ on the Quartus Prime software download page.
 +--------------------------------+---------------------+---------------------------+-------------+------------+--------------+---------+-----------+------+--------------+------------+----------------------------------------------------------+-------------------------------+--------------+
 ; Compilation Hierarchy Node     ; Combinational ALUTs ; Dedicated Logic Registers ; Memory Bits ; UFM Blocks ; DSP Elements ; DSP 9x9 ; DSP 18x18 ; Pins ; Virtual Pins ; ADC blocks ; Full Hierarchy Name                                      ; Entity Name                   ; Library Name ;
 +--------------------------------+---------------------+---------------------------+-------------+------------+--------------+---------+-----------+------+--------------+------------+----------------------------------------------------------+-------------------------------+--------------+
-; |portable_emergency_power_unit ; 31 (1)              ; 39 (0)                    ; 0           ; 0          ; 0            ; 0       ; 0         ; 31   ; 0            ; 0          ; |portable_emergency_power_unit                           ; portable_emergency_power_unit ; work         ;
-;    |fault_event_engine:u_fee|  ; 8 (8)               ; 7 (7)                     ; 0           ; 0          ; 0            ; 0       ; 0         ; 0    ; 0            ; 0          ; |portable_emergency_power_unit|fault_event_engine:u_fee  ; fault_event_engine            ; work         ;
-;    |power_state_machine:u_fsm| ; 22 (22)             ; 32 (32)                   ; 0           ; 0          ; 0            ; 0       ; 0         ; 0    ; 0            ; 0          ; |portable_emergency_power_unit|power_state_machine:u_fsm ; power_state_machine           ; work         ;
+; |portable_emergency_power_unit ; 261 (0)             ; 234 (0)                   ; 0           ; 0          ; 0            ; 0       ; 0         ; 41   ; 0            ; 0          ; |portable_emergency_power_unit                           ; portable_emergency_power_unit ; work         ;
+;    |fault_event_engine:u_fee|  ; 139 (139)           ; 129 (129)                 ; 0           ; 0          ; 0            ; 0       ; 0         ; 0    ; 0            ; 0          ; |portable_emergency_power_unit|fault_event_engine:u_fee  ; fault_event_engine            ; work         ;
+;    |power_state_machine:u_fsm| ; 122 (122)           ; 105 (105)                 ; 0           ; 0          ; 0            ; 0       ; 0         ; 0    ; 0            ; 0          ; |portable_emergency_power_unit|power_state_machine:u_fsm ; power_state_machine           ; work         ;
 +--------------------------------+---------------------+---------------------------+-------------+------------+--------------+---------+-----------+------+--------------+------------+----------------------------------------------------------+-------------------------------+--------------+
 Note: For table entries with two numbers listed, the numbers in parentheses indicate the number of resources of the given type used by the specific entity alone. The numbers listed outside of parentheses indicate the total resources of the given type used by the specific entity and all of its sub-entities in the hierarchy.
 
 
 Encoding Type:  One-Hot
-+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
-; State Machine - |portable_emergency_power_unit|power_state_machine:u_fsm|current_state                                                                                                    ;
-+------------------------+------------------------+------------------------+------------------------+-----------------------+----------------------+--------------------+-------------------+
-; Name                   ; current_state.RECOVERY ; current_state.SHUTDOWN ; current_state.CRITICAL ; current_state.WARNING ; current_state.NORMAL ; current_state.BOOT ; current_state.OFF ;
-+------------------------+------------------------+------------------------+------------------------+-----------------------+----------------------+--------------------+-------------------+
-; current_state.OFF      ; 0                      ; 0                      ; 0                      ; 0                     ; 0                    ; 0                  ; 0                 ;
-; current_state.BOOT     ; 0                      ; 0                      ; 0                      ; 0                     ; 0                    ; 1                  ; 1                 ;
-; current_state.NORMAL   ; 0                      ; 0                      ; 0                      ; 0                     ; 1                    ; 0                  ; 1                 ;
-; current_state.WARNING  ; 0                      ; 0                      ; 0                      ; 1                     ; 0                    ; 0                  ; 1                 ;
-; current_state.CRITICAL ; 0                      ; 0                      ; 1                      ; 0                     ; 0                    ; 0                  ; 1                 ;
-; current_state.SHUTDOWN ; 0                      ; 1                      ; 0                      ; 0                     ; 0                    ; 0                  ; 1                 ;
-; current_state.RECOVERY ; 1                      ; 0                      ; 0                      ; 0                     ; 0                    ; 0                  ; 1                 ;
-+------------------------+------------------------+------------------------+------------------------+-----------------------+----------------------+--------------------+-------------------+
++-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+; State Machine - |portable_emergency_power_unit|power_state_machine:u_fsm|current_state                                                                                                                                                    ;
++------------------------------+------------------------------+------------------------------+------------------------------+-----------------------------+----------------------------+--------------------------+-------------------------+
+; Name                         ; current_state.STATE_RECOVERY ; current_state.STATE_SHUTDOWN ; current_state.STATE_CRITICAL ; current_state.STATE_WARNING ; current_state.STATE_NORMAL ; current_state.STATE_BOOT ; current_state.STATE_OFF ;
++------------------------------+------------------------------+------------------------------+------------------------------+-----------------------------+----------------------------+--------------------------+-------------------------+
+; current_state.STATE_OFF      ; 0                            ; 0                            ; 0                            ; 0                           ; 0                          ; 0                        ; 0                       ;
+; current_state.STATE_BOOT     ; 0                            ; 0                            ; 0                            ; 0                           ; 0                          ; 1                        ; 1                       ;
+; current_state.STATE_NORMAL   ; 0                            ; 0                            ; 0                            ; 0                           ; 1                          ; 0                        ; 1                       ;
+; current_state.STATE_WARNING  ; 0                            ; 0                            ; 0                            ; 1                           ; 0                          ; 0                        ; 1                       ;
+; current_state.STATE_CRITICAL ; 0                            ; 0                            ; 1                            ; 0                           ; 0                          ; 0                        ; 1                       ;
+; current_state.STATE_SHUTDOWN ; 0                            ; 1                            ; 0                            ; 0                           ; 0                          ; 0                        ; 1                       ;
+; current_state.STATE_RECOVERY ; 1                            ; 0                            ; 0                            ; 0                           ; 0                          ; 0                        ; 1                       ;
++------------------------------+------------------------------+------------------------------+------------------------------+-----------------------------+----------------------------+--------------------------+-------------------------+
+
+
++---------------------------------------------------------------------------------+
+; Registers Removed During Synthesis                                              ;
++----------------------------------------+----------------------------------------+
+; Register name                          ; Reason for Removal                     ;
++----------------------------------------+----------------------------------------+
+; power_state_machine:u_fsm|shutdown_ack ; Stuck at GND due to stuck port data_in ;
+; Total Number of Removed Registers = 1  ;                                        ;
++----------------------------------------+----------------------------------------+
 
 
 +------------------------------------------------------+
@@ -245,12 +255,12 @@ Encoding Type:  One-Hot
 +----------------------------------------------+-------+
 ; Statistic                                    ; Value ;
 +----------------------------------------------+-------+
-; Total registers                              ; 39    ;
-; Number of registers using Synchronous Clear  ; 0     ;
+; Total registers                              ; 234   ;
+; Number of registers using Synchronous Clear  ; 158   ;
 ; Number of registers using Synchronous Load   ; 0     ;
-; Number of registers using Asynchronous Clear ; 39    ;
+; Number of registers using Asynchronous Clear ; 234   ;
 ; Number of registers using Asynchronous Load  ; 0     ;
-; Number of registers using Clock Enable       ; 2     ;
+; Number of registers using Clock Enable       ; 158   ;
 ; Number of registers using Preset             ; 0     ;
 +----------------------------------------------+-------+
 
@@ -265,23 +275,24 @@ Encoding Type:  One-Hot
 +----------------------------------------------+---------+
 
 
-+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
-; Multiplexer Restructuring Statistics (Restructuring Performed)                                                                                                                          ;
-+--------------------+-----------+---------------+----------------------+------------------------+------------+---------------------------------------------------------------------------+
-; Multiplexer Inputs ; Bus Width ; Baseline Area ; Area if Restructured ; Saving if Restructured ; Registered ; Example Multiplexer Output                                                ;
-+--------------------+-----------+---------------+----------------------+------------------------+------------+---------------------------------------------------------------------------+
-; 5:1                ; 2 bits    ; 6 LEs         ; 4 LEs                ; 2 LEs                  ; Yes        ; |portable_emergency_power_unit|fault_event_engine:u_fee|fault_code_bus[2] ;
-; 14:1               ; 7 bits    ; 63 LEs        ; 42 LEs               ; 21 LEs                 ; No         ; |portable_emergency_power_unit|power_state_machine:u_fsm|Selector0        ;
-+--------------------+-----------+---------------+----------------------+------------------------+------------+---------------------------------------------------------------------------+
-
-
-+---------------------------------------------------------------------------------------------------------------------------+
-; Port Connectivity Checks: "fault_event_engine:u_fee"                                                                      ;
-+-----------------+--------+----------+-------------------------------------------------------------------------------------+
-; Port            ; Type   ; Severity ; Details                                                                             ;
-+-----------------+--------+----------+-------------------------------------------------------------------------------------+
-; warning_request ; Output ; Info     ; Connected to dangling logic. Logic that only feeds a dangling port will be removed. ;
-+-----------------+--------+----------+-------------------------------------------------------------------------------------+
++--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+; Multiplexer Restructuring Statistics (Restructuring Performed)                                                                                                                                         ;
++--------------------+-----------+---------------+----------------------+------------------------+------------+------------------------------------------------------------------------------------------+
+; Multiplexer Inputs ; Bus Width ; Baseline Area ; Area if Restructured ; Saving if Restructured ; Registered ; Example Multiplexer Output                                                               ;
++--------------------+-----------+---------------+----------------------+------------------------+------------+------------------------------------------------------------------------------------------+
+; 3:1                ; 29 bits   ; 58 LEs        ; 29 LEs               ; 29 LEs                 ; Yes        ; |portable_emergency_power_unit|power_state_machine:u_fsm|heartbeat_counter[27]           ;
+; 3:1                ; 16 bits   ; 32 LEs        ; 16 LEs               ; 16 LEs                 ; Yes        ; |portable_emergency_power_unit|fault_event_engine:u_fee|overtemperature_counter[4]       ;
+; 3:1                ; 16 bits   ; 32 LEs        ; 16 LEs               ; 16 LEs                 ; Yes        ; |portable_emergency_power_unit|fault_event_engine:u_fee|sensor_failure_counter[0]        ;
+; 3:1                ; 16 bits   ; 32 LEs        ; 16 LEs               ; 16 LEs                 ; Yes        ; |portable_emergency_power_unit|fault_event_engine:u_fee|undervoltage_counter[3]          ;
+; 3:1                ; 19 bits   ; 38 LEs        ; 19 LEs               ; 19 LEs                 ; Yes        ; |portable_emergency_power_unit|fault_event_engine:u_fee|fan_failure_counter[16]          ;
+; 3:1                ; 21 bits   ; 42 LEs        ; 21 LEs               ; 21 LEs                 ; Yes        ; |portable_emergency_power_unit|fault_event_engine:u_fee|communication_timeout_counter[8] ;
+; 3:1                ; 6 bits    ; 12 LEs        ; 6 LEs                ; 6 LEs                  ; Yes        ; |portable_emergency_power_unit|fault_event_engine:u_fee|overcurrent_counter[4]           ;
+; 3:1                ; 6 bits    ; 12 LEs        ; 6 LEs                ; 6 LEs                  ; Yes        ; |portable_emergency_power_unit|fault_event_engine:u_fee|overvoltage_counter[4]           ;
+; 3:1                ; 29 bits   ; 58 LEs        ; 29 LEs               ; 29 LEs                 ; Yes        ; |portable_emergency_power_unit|power_state_machine:u_fsm|timer_counter[6]                ;
+; 6:1                ; 2 bits    ; 8 LEs         ; 8 LEs                ; 0 LEs                  ; Yes        ; |portable_emergency_power_unit|fault_event_engine:u_fee|buzzer_pattern[0]                ;
+; 17:1               ; 5 bits    ; 55 LEs        ; 30 LEs               ; 25 LEs                 ; No         ; |portable_emergency_power_unit|power_state_machine:u_fsm|next_state.STATE_SHUTDOWN       ;
+; 18:1               ; 2 bits    ; 24 LEs        ; 8 LEs                ; 16 LEs                 ; No         ; |portable_emergency_power_unit|power_state_machine:u_fsm|next_state.STATE_OFF            ;
++--------------------+-----------+---------------+----------------------+------------------------+------------+------------------------------------------------------------------------------------------+
 
 
 +-----------------------------------------------------+
@@ -289,19 +300,22 @@ Encoding Type:  One-Hot
 +-----------------------+-----------------------------+
 ; Type                  ; Count                       ;
 +-----------------------+-----------------------------+
-; boundary_port         ; 31                          ;
-; cycloneiii_ff         ; 39                          ;
-;     CLR               ; 37                          ;
-;     ENA CLR           ; 2                           ;
-; cycloneiii_lcell_comb ; 32                          ;
-;     normal            ; 32                          ;
-;         1 data inputs ; 1                           ;
-;         2 data inputs ; 3                           ;
-;         3 data inputs ; 4                           ;
-;         4 data inputs ; 24                          ;
+; boundary_port         ; 41                          ;
+; cycloneiii_ff         ; 234                         ;
+;     CLR               ; 76                          ;
+;     ENA CLR SCLR      ; 158                         ;
+; cycloneiii_lcell_comb ; 263                         ;
+;     arith             ; 149                         ;
+;         2 data inputs ; 149                         ;
+;     normal            ; 114                         ;
+;         0 data inputs ; 1                           ;
+;         1 data inputs ; 11                          ;
+;         2 data inputs ; 8                           ;
+;         3 data inputs ; 21                          ;
+;         4 data inputs ; 73                          ;
 ;                       ;                             ;
-; Max LUT depth         ; 4.00                        ;
-; Average LUT depth     ; 1.79                        ;
+; Max LUT depth         ; 7.00                        ;
+; Average LUT depth     ; 2.71                        ;
 +-----------------------+-----------------------------+
 
 
@@ -320,31 +334,34 @@ Encoding Type:  One-Hot
 Info: *******************************************************************
 Info: Running Quartus Prime Analysis & Synthesis
     Info: Version 25.1std.0 Build 1129 10/21/2025 SC Lite Edition
-    Info: Processing started: Tue Aug  4 15:48:14 2026
+    Info: Processing started: Fri Oct  2 18:11:41 2026
 Info: Command: quartus_map --read_settings_files=on --write_settings_files=off portable-emergency-power-unit -c portable-emergency-power-unit
 Warning (18236): Number of processors has not been specified which may cause overloading on shared machines.  Set the global assignment NUM_PARALLEL_PROCESSORS in your QSF to an appropriate value for best performance.
 Info (20030): Parallel compilation is enabled and will use 16 of the 16 processors detected
 Info (12021): Found 1 design units, including 1 entities, in source file /college/despro/portable-emergency-power-unit/fpga/hdl/portable_emergency_power_unit.sv
-    Info (12023): Found entity 1: portable_emergency_power_unit File: D:/College/Despro/portable-emergency-power-unit/fpga/hdl/portable_emergency_power_unit.sv Line: 3
+    Info (12023): Found entity 1: portable_emergency_power_unit File: D:/College/Despro/portable-emergency-power-unit/fpga/hdl/portable_emergency_power_unit.sv Line: 4
 Info (12021): Found 1 design units, including 1 entities, in source file /college/despro/portable-emergency-power-unit/fpga/hdl/fsm.sv
     Info (12023): Found entity 1: power_state_machine File: D:/College/Despro/portable-emergency-power-unit/fpga/hdl/fsm.sv Line: 1
 Info (12021): Found 1 design units, including 1 entities, in source file /college/despro/portable-emergency-power-unit/fpga/hdl/fee.sv
     Info (12023): Found entity 1: fault_event_engine File: D:/College/Despro/portable-emergency-power-unit/fpga/hdl/fee.sv Line: 1
 Info (12127): Elaborating entity "portable_emergency_power_unit" for the top level hierarchy
-Info (12128): Elaborating entity "power_state_machine" for hierarchy "power_state_machine:u_fsm" File: D:/College/Despro/portable-emergency-power-unit/fpga/hdl/portable_emergency_power_unit.sv Line: 63
-Info (12128): Elaborating entity "fault_event_engine" for hierarchy "fault_event_engine:u_fee" File: D:/College/Despro/portable-emergency-power-unit/fpga/hdl/portable_emergency_power_unit.sv Line: 84
-Info (13000): Registers with preset signals will power-up high File: D:/College/Despro/portable-emergency-power-unit/fpga/hdl/fsm.sv Line: 208
+Info (12128): Elaborating entity "power_state_machine" for hierarchy "power_state_machine:u_fsm" File: D:/College/Despro/portable-emergency-power-unit/fpga/hdl/portable_emergency_power_unit.sv Line: 71
+Info (12128): Elaborating entity "fault_event_engine" for hierarchy "fault_event_engine:u_fee" File: D:/College/Despro/portable-emergency-power-unit/fpga/hdl/portable_emergency_power_unit.sv Line: 93
+Warning (10036): Verilog HDL or VHDL warning at fee.sv(31): object "critical_clear_sync" assigned a value but never read File: D:/College/Despro/portable-emergency-power-unit/fpga/hdl/fee.sv Line: 31
+Info (13000): Registers with preset signals will power-up high File: D:/College/Despro/portable-emergency-power-unit/fpga/hdl/fsm.sv Line: 370
 Info (13003): DEV_CLRn pin will set, and not reset, register with preset signal due to NOT Gate Push-Back
+Warning (13024): Output pins are stuck at VCC or GND
+    Warning (13410): Pin "shutdown_ack" is stuck at GND File: D:/College/Despro/portable-emergency-power-unit/fpga/hdl/portable_emergency_power_unit.sv Line: 23
 Info (286030): Timing-Driven Synthesis is running
 Info (16010): Generating hard_block partition "hard_block:auto_generated_inst"
     Info (16011): Adding 0 node(s), including 0 DDIO, 0 PLL, 0 transceiver and 0 LCELL
-Info (21057): Implemented 89 device resources after synthesis - the final resource count might be different
-    Info (21058): Implemented 13 input pins
-    Info (21059): Implemented 18 output pins
-    Info (21061): Implemented 58 logic cells
-Info: Quartus Prime Analysis & Synthesis was successful. 0 errors, 1 warning
+Info (21057): Implemented 357 device resources after synthesis - the final resource count might be different
+    Info (21058): Implemented 20 input pins
+    Info (21059): Implemented 21 output pins
+    Info (21061): Implemented 316 logic cells
+Info: Quartus Prime Analysis & Synthesis was successful. 0 errors, 4 warnings
     Info: Peak virtual memory: 4861 megabytes
-    Info: Processing ended: Tue Aug  4 15:48:21 2026
+    Info: Processing ended: Fri Oct  2 18:11:48 2026
     Info: Elapsed time: 00:00:07
     Info: Total CPU time (on all processors): 00:00:16
 

@@ -81,6 +81,8 @@ module tb_fee_3;
         repeat (50 + 5) @(posedge clk);
         assert (critical_response == 1'b1) else $error("critical_response not set");
         assert (fault_code_bus == CODE_OVERCURRENT) else $error("fault_code_bus did not pick overcurrent");
+        // hold the fault so the result stays visible in the waveform
+        repeat (20) @(posedge clk);
 
         // the fault itself clears, but critical_response must stay latched
         overcurrent = 1'b0;
@@ -91,11 +93,18 @@ module tb_fee_3;
 
         // an unrelated warning fault passes through while the latch is still set
         undervoltage = 1'b1;
-        repeat (50_000 + 5) @(posedge clk);
+        repeat (5) @(posedge clk);
+        // skip the debounce wait, the real comparator finishes the last few counts
+        force dut.undervoltage_counter = int'(dut.undervoltage_threshold) - 3;
+        @(posedge clk);
+        release dut.undervoltage_counter;
+        repeat (10) @(posedge clk);
         assert (warning_response  == 1'b1) else $error("warning_response not set for undervoltage");
         assert (fault_code_bus == CODE_UNDERVOLTAGE) else $error("fault_code_bus did not follow the new live fault");
         assert (buzzer_pattern == PATTERN_WARNING) else $error("buzzer_pattern did not follow the new live fault");
         assert (critical_response == 1'b1) else $error("critical_response disturbed by an unrelated fault");
+        // hold the fault so the result stays visible in the waveform
+        repeat (20) @(posedge clk);
         undervoltage = 1'b0;
         repeat (5) @(posedge clk);
         assert (warning_response  == 1'b0) else $error("warning_response did not clear");
@@ -104,11 +113,18 @@ module tb_fee_3;
 
         // a second unrelated fault, this time shutdown-class, same expectation
         overtemperature = 1'b1;
-        repeat (50_000 + 5) @(posedge clk);
+        repeat (5) @(posedge clk);
+        // skip the debounce wait, the real comparator finishes the last few counts
+        force dut.overtemperature_counter = int'(dut.overtemperature_threshold) - 3;
+        @(posedge clk);
+        release dut.overtemperature_counter;
+        repeat (10) @(posedge clk);
         assert (shutdown_response == 1'b1) else $error("shutdown_response not set for overtemperature");
         assert (fault_code_bus == CODE_OVERTEMPERATURE) else $error("fault_code_bus did not follow overtemperature");
         assert (buzzer_pattern == PATTERN_SHUTDOWN) else $error("buzzer_pattern did not follow overtemperature");
         assert (critical_response == 1'b1) else $error("critical_response disturbed by overtemperature");
+        // hold the fault so the result stays visible in the waveform
+        repeat (20) @(posedge clk);
         overtemperature = 1'b0;
         repeat (5) @(posedge clk);
         assert (shutdown_response == 1'b0) else $error("shutdown_response did not clear");

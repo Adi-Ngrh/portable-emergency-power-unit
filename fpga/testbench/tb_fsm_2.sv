@@ -21,7 +21,6 @@ module tb_fsm_2;
 
     // dut outputs
     logic system_enable;
-    logic mcu_power_enable;
     logic warning_led;
     logic shutdown_ack;
     logic critical_clear;
@@ -52,7 +51,6 @@ module tb_fsm_2;
         .reset_n           (reset_n),
         .clk               (clk),
         .system_enable     (system_enable),
-        .mcu_power_enable  (mcu_power_enable),
         .warning_led       (warning_led),
         .shutdown_ack      (shutdown_ack),
         .critical_clear    (critical_clear),
@@ -104,8 +102,9 @@ module tb_fsm_2;
         wait (state_debug_bus == STATE_OFF);
         $display("[%0t] boot timed out, back to STATE_OFF", $time);
         assert (system_enable == 1'b0) else $error("system_enable not low after boot timeout");
-        assert (mcu_power_enable == 1'b0) else $error("mcu_power_enable not low after boot timeout");
 
+        // hold at STATE_OFF for a few cycles so the waveform shows it settled, not just the instant
+        repeat (5) @(posedge clk);
         $finish;
     end
 

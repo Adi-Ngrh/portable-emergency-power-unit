@@ -13,7 +13,6 @@ module power_state_machine(
 	input logic clk,
 
 	output logic system_enable,
-	output logic mcu_power_enable,
 	output logic warning_led,
 	output logic shutdown_ack,
 	output logic critical_clear,
@@ -64,7 +63,6 @@ localparam logic [28:0] heartbeat_timeout_threshold = 29'd150_000_000; // placeh
 
 // temporary outputs registers
 logic system_enable_next;
-logic mcu_power_enable_next;
 logic warning_led_next;
 logic shutdown_ack_next;
 logic critical_clear_next;
@@ -201,7 +199,6 @@ always_comb begin
 	// default assignment
 	next_state = current_state;
 	system_enable_next = 1'b0;
-	mcu_power_enable_next = 1'b1; // MCU stays powered by default, only STATE_OFF cuts it
 	timer_start = 1'b0;
 	timer_threshold = 29'd0;
 	warning_led_next = 1'b0;
@@ -217,7 +214,6 @@ always_comb begin
 		// STATE_OFF: Device is off.
 		// Transitions to STATE_BOOT when the power button is manually pressed.
 		STATE_OFF: begin
-			mcu_power_enable_next = 1'b0; // override default: MCU stays off here
 			if (manual_power_pressed) begin
 				next_state = STATE_BOOT;
 			end
@@ -364,7 +360,6 @@ end
 always_ff @(posedge clk or negedge reset_n) begin
 	if (!reset_n) begin
 		system_enable   <= 1'b0;
-		mcu_power_enable <= 1'b0;
 		warning_led     <= 1'b0;
 		shutdown_ack <= 1'b0;
 		critical_clear <= 1'b0;
@@ -373,7 +368,6 @@ always_ff @(posedge clk or negedge reset_n) begin
 		state_debug_bus <= STATE_OFF;
 	end else begin
 		system_enable   <= system_enable_next;
-		mcu_power_enable <= mcu_power_enable_next;
 		warning_led     <= warning_led_next;
 		shutdown_ack <= shutdown_ack_next;
 		critical_clear <= critical_clear_next;

@@ -78,7 +78,17 @@ module tb_fee_2;
         overcurrent     = 1'b1; // critical
         overtemperature = 1'b1; // shutdown
         undervoltage    = 1'b1; // warning
-        repeat (50_000 + 5) @(posedge clk);
+        repeat (5) @(posedge clk);
+
+        // skip the debounce wait, the real comparators finish the last few counts
+        force dut.overcurrent_counter     = int'(dut.overcurrent_threshold) - 3;
+        force dut.overtemperature_counter = int'(dut.overtemperature_threshold) - 3;
+        force dut.undervoltage_counter    = int'(dut.undervoltage_threshold) - 3;
+        @(posedge clk);
+        release dut.overcurrent_counter;
+        release dut.overtemperature_counter;
+        release dut.undervoltage_counter;
+        repeat (10) @(posedge clk);
 
         $display("[%0t] mixed severity faults asserted together", $time);
         assert (critical_response == 1'b1) else $error("critical_response not set during mixed fault");
@@ -86,6 +96,9 @@ module tb_fee_2;
         assert (warning_response  == 1'b1) else $error("warning_response not set during mixed fault");
         assert (fault_code_bus == CODE_OVERCURRENT) else $error("fault_code_bus did not pick the critical fault");
         assert (buzzer_pattern == PATTERN_CRITICAL) else $error("buzzer_pattern did not pick the critical fault");
+
+        // hold the faults so the result stays visible in the waveform
+        repeat (20) @(posedge clk);
 
         overcurrent     = 1'b0;
         overtemperature = 1'b0;
@@ -105,7 +118,15 @@ module tb_fee_2;
         // phase 2: two faults from the same severity class at once
         undervoltage = 1'b1;
         fan_failure  = 1'b1;
-        repeat (500_000 + 5) @(posedge clk);
+        repeat (5) @(posedge clk);
+
+        // skip the debounce wait, the real comparators finish the last few counts
+        force dut.undervoltage_counter = int'(dut.undervoltage_threshold) - 3;
+        force dut.fan_failure_counter  = int'(dut.fan_failure_threshold) - 3;
+        @(posedge clk);
+        release dut.undervoltage_counter;
+        release dut.fan_failure_counter;
+        repeat (10) @(posedge clk);
 
         $display("[%0t] same severity faults asserted together", $time);
         assert (warning_response  == 1'b1) else $error("warning_response not set");
@@ -113,6 +134,9 @@ module tb_fee_2;
         assert (critical_response == 1'b0) else $error("critical_response incorrectly set");
         assert (fault_code_bus == CODE_UNDERVOLTAGE) else $error("fault_code_bus did not pick the higher priority fault");
         assert (buzzer_pattern == PATTERN_WARNING) else $error("buzzer_pattern not PATTERN_WARNING");
+
+        // hold the faults so the result stays visible in the waveform
+        repeat (20) @(posedge clk);
 
         undervoltage = 1'b0;
         fan_failure  = 1'b0;

@@ -21,7 +21,6 @@ module tb_fsm_1;
 
     // dut outputs
     logic system_enable;
-    logic mcu_power_enable;
     logic warning_led;
     logic shutdown_ack;
     logic critical_clear;
@@ -53,7 +52,6 @@ module tb_fsm_1;
         .reset_n           (reset_n),
         .clk               (clk),
         .system_enable     (system_enable),
-        .mcu_power_enable  (mcu_power_enable),
         .warning_led       (warning_led),
         .shutdown_ack      (shutdown_ack),
         .critical_clear    (critical_clear),
@@ -106,7 +104,6 @@ module tb_fsm_1;
         wait (state_debug_bus == STATE_NORMAL);
         $display("[%0t] entered STATE_NORMAL", $time);
         assert (system_enable == 1'b1) else $error("system_enable not high in STATE_NORMAL");
-        assert (mcu_power_enable == 1'b1) else $error("mcu_power_enable not high in STATE_NORMAL");
 
         boot_success = 1'b0;
 
@@ -116,7 +113,6 @@ module tb_fsm_1;
         repeat (2) @(posedge clk);
         assert (state_debug_bus == STATE_OFF) else $error("did not reset back to STATE_OFF");
         assert (system_enable == 1'b0) else $error("system_enable not low after reset");
-        assert (mcu_power_enable == 1'b0) else $error("mcu_power_enable not low after reset");
         $display("[%0t] reset back to STATE_OFF, test passed", $time);
 
         $finish;

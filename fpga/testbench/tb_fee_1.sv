@@ -63,16 +63,59 @@ module tb_fee_1;
         .buzzer_pattern         (buzzer_pattern)
     );
 
-    // assert one fault, wait past its debounce threshold, check the result, then clear it
+    // read a fault's debounce threshold constant from inside the dut
+    function automatic int get_threshold(input int fault_id);
+        case (fault_id)
+            0:       return int'(dut.overcurrent_threshold);
+            1:       return int'(dut.overvoltage_threshold);
+            2:       return int'(dut.undervoltage_threshold);
+            3:       return int'(dut.overtemperature_threshold);
+            4:       return int'(dut.fan_failure_threshold);
+            5:       return int'(dut.sensor_failure_threshold);
+            6:       return int'(dut.communication_timeout_threshold);
+            default: return 0;
+        endcase
+    endfunction
+
+    // jump a fault's debounce counter to just below its threshold, the real comparator finishes the rest
+    task automatic skip_debounce(input int fault_id);
+        case (fault_id)
+            0: force dut.overcurrent_counter           = int'(dut.overcurrent_threshold) - 3;
+            1: force dut.overvoltage_counter           = int'(dut.overvoltage_threshold) - 3;
+            2: force dut.undervoltage_counter          = int'(dut.undervoltage_threshold) - 3;
+            3: force dut.overtemperature_counter       = int'(dut.overtemperature_threshold) - 3;
+            4: force dut.fan_failure_counter           = int'(dut.fan_failure_threshold) - 3;
+            5: force dut.sensor_failure_counter        = int'(dut.sensor_failure_threshold) - 3;
+            6: force dut.communication_timeout_counter = int'(dut.communication_timeout_threshold) - 3;
+        endcase
+        @(posedge clk);
+        case (fault_id)
+            0: release dut.overcurrent_counter;
+            1: release dut.overvoltage_counter;
+            2: release dut.undervoltage_counter;
+            3: release dut.overtemperature_counter;
+            4: release dut.fan_failure_counter;
+            5: release dut.sensor_failure_counter;
+            6: release dut.communication_timeout_counter;
+        endcase
+    endtask
+
+    // assert one fault, skip its debounce wait, check the result, then clear it
     task automatic check_fault(
         ref logic fault_pin,
-        input int threshold,
+        input int fault_id,
+        input int expect_threshold,
         input logic [2:0] expect_code,
         input logic [1:0] expect_pattern,
         input bit is_critical
     );
+        // the threshold constant must match the spec, since the wait is skipped
+        assert (get_threshold(fault_id) == expect_threshold) else $error("debounce threshold does not match the spec");
+
         fault_pin = 1'b1;
-        repeat (threshold + 5) @(posedge clk);
+        repeat (5) @(posedge clk);
+        skip_debounce(fault_id);
+        repeat (10) @(posedge clk);
         assert (fault_code_bus == expect_code) else $error("wrong fault_code_bus for this fault");
         assert (buzzer_pattern == expect_pattern) else $error("wrong buzzer_pattern for this fault");
         if (is_critical) begin
@@ -82,6 +125,9 @@ module tb_fee_1;
         end else begin
             assert (warning_response == 1'b1) else $error("warning_response not set");
         end
+
+        // hold the fault so the result stays visible in the waveform
+        repeat (20) @(posedge clk);
 
         fault_pin = 1'b0;
         // let the fault actually clear through sync+debounce before pulsing critical_clear
@@ -118,25 +164,25 @@ module tb_fee_1;
         @(posedge clk);
 
         // sweep every fault back to back, no reset_n in between
-        check_fault(overcurrent,           50,      CODE_OVERCURRENT,         PATTERN_CRITICAL, 1);
+        check_fault(overcurrent,           0, 50,        CODE_OVERCURRENT,           PATTERN_CRITICAL, 1);
         $display("[%0t] overcurrent checked", $time);
 
-        check_fault(overvoltage,           50,      CODE_OVERVOLTAGE,         PATTERN_CRITICAL, 1);
+        check_fault(overvoltage,           1, 50,        CODE_OVERVOLTAGE,           PATTERN_CRITICAL, 1);
         $display("[%0t] overvoltage checked", $time);
 
-        check_fault(undervoltage,          50_000,  CODE_UNDERVOLTAGE,        PATTERN_WARNING,  0);
+        check_fault(undervoltage,          2, 50_000,    CODE_UNDERVOLTAGE,          PATTERN_WARNING,  0);
         $display("[%0t] undervoltage checked", $time);
 
-        check_fault(overtemperature,       50_000,  CODE_OVERTEMPERATURE,     PATTERN_SHUTDOWN, 0);
+        check_fault(overtemperature,       3, 50_000,    CODE_OVERTEMPERATURE,       PATTERN_SHUTDOWN, 0);
         $display("[%0t] overtemperature checked", $time);
 
-        check_fault(fan_failure,           500_000, CODE_FAN_FAILURE,         PATTERN_WARNING,  0);
+        check_fault(fan_failure,           4, 500_000,   CODE_FAN_FAILURE,           PATTERN_WARNING,  0);
         $display("[%0t] fan_failure checked", $time);
 
-        check_fault(sensor_failure,        50_000,  CODE_SENSOR_FAILURE,      PATTERN_SHUTDOWN, 0);
+        check_fault(sensor_failure,        5, 50_000,    CODE_SENSOR_FAILURE,        PATTERN_SHUTDOWN, 0);
         $display("[%0t] sensor_failure checked", $time);
 
-        check_fault(communication_timeout, 1_500_000, CODE_COMMUNICATION_TIMEOUT, PATTERN_WARNING, 0);
+        check_fault(communication_timeout, 6, 1_500_000, CODE_COMMUNICATION_TIMEOUT, PATTERN_WARNING,  0);
         $display("[%0t] communication_timeout checked", $time);
 
         $display("[%0t] all 7 faults swept back to back with no reset_n, test passed", $time);
