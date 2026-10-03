@@ -1,5 +1,5 @@
 Analysis & Synthesis report for portable-emergency-power-unit
-Fri Oct  2 18:11:48 2026
+Sat Oct  3 11:24:00 2026
 Quartus Prime Version 25.1std.0 Build 1129 10/21/2025 SC Lite Edition
 
 
@@ -14,13 +14,12 @@ Quartus Prime Version 25.1std.0 Build 1129 10/21/2025 SC Lite Edition
   6. Analysis & Synthesis Resource Usage Summary
   7. Analysis & Synthesis Resource Utilization by Entity
   8. State Machine - |portable_emergency_power_unit|power_state_machine:u_fsm|current_state
-  9. Registers Removed During Synthesis
- 10. General Register Statistics
- 11. Inverted Register Statistics
- 12. Multiplexer Restructuring Statistics (Restructuring Performed)
- 13. Post-Synthesis Netlist Statistics for Top Partition
- 14. Elapsed Time Per Partition
- 15. Analysis & Synthesis Messages
+  9. General Register Statistics
+ 10. Inverted Register Statistics
+ 11. Multiplexer Restructuring Statistics (Restructuring Performed)
+ 12. Post-Synthesis Netlist Statistics for Top Partition
+ 13. Elapsed Time Per Partition
+ 14. Analysis & Synthesis Messages
 
 
 
@@ -47,16 +46,16 @@ on the Quartus Prime software download page.
 +--------------------------------------------------------------------------------------+
 ; Analysis & Synthesis Summary                                                         ;
 +------------------------------------+-------------------------------------------------+
-; Analysis & Synthesis Status        ; Successful - Fri Oct  2 18:11:48 2026           ;
+; Analysis & Synthesis Status        ; Successful - Sat Oct  3 11:24:00 2026           ;
 ; Quartus Prime Version              ; 25.1std.0 Build 1129 10/21/2025 SC Lite Edition ;
 ; Revision Name                      ; portable-emergency-power-unit                   ;
 ; Top-level Entity Name              ; portable_emergency_power_unit                   ;
 ; Family                             ; MAX 10                                          ;
-; Total logic elements               ; 306                                             ;
+; Total logic elements               ; 308                                             ;
 ;     Total combinational functions  ; 261                                             ;
-;     Dedicated logic registers      ; 234                                             ;
-; Total registers                    ; 234                                             ;
-; Total pins                         ; 41                                              ;
+;     Dedicated logic registers      ; 236                                             ;
+; Total registers                    ; 236                                             ;
+; Total pins                         ; 40                                              ;
 ; Total virtual pins                 ; 0                                               ;
 ; Total memory bits                  ; 0                                               ;
 ; Embedded Multiplier 9-bit elements ; 0                                               ;
@@ -185,7 +184,7 @@ on the Quartus Prime software download page.
 +---------------------------------------------+-----------+
 ; Resource                                    ; Usage     ;
 +---------------------------------------------+-----------+
-; Estimated Total logic elements              ; 306       ;
+; Estimated Total logic elements              ; 308       ;
 ;                                             ;           ;
 ; Total combinational functions               ; 261       ;
 ; Logic element usage by number of LUT inputs ;           ;
@@ -197,18 +196,18 @@ on the Quartus Prime software download page.
 ;     -- normal mode                          ; 112       ;
 ;     -- arithmetic mode                      ; 149       ;
 ;                                             ;           ;
-; Total registers                             ; 234       ;
-;     -- Dedicated logic registers            ; 234       ;
+; Total registers                             ; 236       ;
+;     -- Dedicated logic registers            ; 236       ;
 ;     -- I/O registers                        ; 0         ;
 ;                                             ;           ;
-; I/O pins                                    ; 41        ;
+; I/O pins                                    ; 40        ;
 ;                                             ;           ;
 ; Embedded Multiplier 9-bit elements          ; 0         ;
 ;                                             ;           ;
 ; Maximum fan-out node                        ; clk~input ;
-; Maximum fan-out                             ; 234       ;
-; Total fan-out                               ; 1758      ;
-; Average fan-out                             ; 3.05      ;
+; Maximum fan-out                             ; 236       ;
+; Total fan-out                               ; 1763      ;
+; Average fan-out                             ; 3.06      ;
 +---------------------------------------------+-----------+
 
 
@@ -217,8 +216,8 @@ on the Quartus Prime software download page.
 +--------------------------------+---------------------+---------------------------+-------------+------------+--------------+---------+-----------+------+--------------+------------+----------------------------------------------------------+-------------------------------+--------------+
 ; Compilation Hierarchy Node     ; Combinational ALUTs ; Dedicated Logic Registers ; Memory Bits ; UFM Blocks ; DSP Elements ; DSP 9x9 ; DSP 18x18 ; Pins ; Virtual Pins ; ADC blocks ; Full Hierarchy Name                                      ; Entity Name                   ; Library Name ;
 +--------------------------------+---------------------+---------------------------+-------------+------------+--------------+---------+-----------+------+--------------+------------+----------------------------------------------------------+-------------------------------+--------------+
-; |portable_emergency_power_unit ; 261 (0)             ; 234 (0)                   ; 0           ; 0          ; 0            ; 0       ; 0         ; 41   ; 0            ; 0          ; |portable_emergency_power_unit                           ; portable_emergency_power_unit ; work         ;
-;    |fault_event_engine:u_fee|  ; 139 (139)           ; 129 (129)                 ; 0           ; 0          ; 0            ; 0       ; 0         ; 0    ; 0            ; 0          ; |portable_emergency_power_unit|fault_event_engine:u_fee  ; fault_event_engine            ; work         ;
+; |portable_emergency_power_unit ; 261 (0)             ; 236 (0)                   ; 0           ; 0          ; 0            ; 0       ; 0         ; 40   ; 0            ; 0          ; |portable_emergency_power_unit                           ; portable_emergency_power_unit ; work         ;
+;    |fault_event_engine:u_fee|  ; 139 (139)           ; 131 (131)                 ; 0           ; 0          ; 0            ; 0       ; 0         ; 0    ; 0            ; 0          ; |portable_emergency_power_unit|fault_event_engine:u_fee  ; fault_event_engine            ; work         ;
 ;    |power_state_machine:u_fsm| ; 122 (122)           ; 105 (105)                 ; 0           ; 0          ; 0            ; 0       ; 0         ; 0    ; 0            ; 0          ; |portable_emergency_power_unit|power_state_machine:u_fsm ; power_state_machine           ; work         ;
 +--------------------------------+---------------------+---------------------------+-------------+------------+--------------+---------+-----------+------+--------------+------------+----------------------------------------------------------+-------------------------------+--------------+
 Note: For table entries with two numbers listed, the numbers in parentheses indicate the number of resources of the given type used by the specific entity alone. The numbers listed outside of parentheses indicate the total resources of the given type used by the specific entity and all of its sub-entities in the hierarchy.
@@ -240,25 +239,15 @@ Encoding Type:  One-Hot
 +------------------------------+------------------------------+------------------------------+------------------------------+-----------------------------+----------------------------+--------------------------+-------------------------+
 
 
-+---------------------------------------------------------------------------------+
-; Registers Removed During Synthesis                                              ;
-+----------------------------------------+----------------------------------------+
-; Register name                          ; Reason for Removal                     ;
-+----------------------------------------+----------------------------------------+
-; power_state_machine:u_fsm|shutdown_ack ; Stuck at GND due to stuck port data_in ;
-; Total Number of Removed Registers = 1  ;                                        ;
-+----------------------------------------+----------------------------------------+
-
-
 +------------------------------------------------------+
 ; General Register Statistics                          ;
 +----------------------------------------------+-------+
 ; Statistic                                    ; Value ;
 +----------------------------------------------+-------+
-; Total registers                              ; 234   ;
+; Total registers                              ; 236   ;
 ; Number of registers using Synchronous Clear  ; 158   ;
 ; Number of registers using Synchronous Load   ; 0     ;
-; Number of registers using Asynchronous Clear ; 234   ;
+; Number of registers using Asynchronous Clear ; 236   ;
 ; Number of registers using Asynchronous Load  ; 0     ;
 ; Number of registers using Clock Enable       ; 158   ;
 ; Number of registers using Preset             ; 0     ;
@@ -300,22 +289,21 @@ Encoding Type:  One-Hot
 +-----------------------+-----------------------------+
 ; Type                  ; Count                       ;
 +-----------------------+-----------------------------+
-; boundary_port         ; 41                          ;
-; cycloneiii_ff         ; 234                         ;
-;     CLR               ; 76                          ;
+; boundary_port         ; 40                          ;
+; cycloneiii_ff         ; 236                         ;
+;     CLR               ; 78                          ;
 ;     ENA CLR SCLR      ; 158                         ;
-; cycloneiii_lcell_comb ; 263                         ;
+; cycloneiii_lcell_comb ; 262                         ;
 ;     arith             ; 149                         ;
 ;         2 data inputs ; 149                         ;
-;     normal            ; 114                         ;
-;         0 data inputs ; 1                           ;
+;     normal            ; 113                         ;
 ;         1 data inputs ; 11                          ;
 ;         2 data inputs ; 8                           ;
 ;         3 data inputs ; 21                          ;
 ;         4 data inputs ; 73                          ;
 ;                       ;                             ;
 ; Max LUT depth         ; 7.00                        ;
-; Average LUT depth     ; 2.71                        ;
+; Average LUT depth     ; 2.70                        ;
 +-----------------------+-----------------------------+
 
 
@@ -334,7 +322,7 @@ Encoding Type:  One-Hot
 Info: *******************************************************************
 Info: Running Quartus Prime Analysis & Synthesis
     Info: Version 25.1std.0 Build 1129 10/21/2025 SC Lite Edition
-    Info: Processing started: Fri Oct  2 18:11:41 2026
+    Info: Processing started: Sat Oct  3 11:23:48 2026
 Info: Command: quartus_map --read_settings_files=on --write_settings_files=off portable-emergency-power-unit -c portable-emergency-power-unit
 Warning (18236): Number of processors has not been specified which may cause overloading on shared machines.  Set the global assignment NUM_PARALLEL_PROCESSORS in your QSF to an appropriate value for best performance.
 Info (20030): Parallel compilation is enabled and will use 16 of the 16 processors detected
@@ -345,24 +333,21 @@ Info (12021): Found 1 design units, including 1 entities, in source file /colleg
 Info (12021): Found 1 design units, including 1 entities, in source file /college/despro/portable-emergency-power-unit/fpga/hdl/fee.sv
     Info (12023): Found entity 1: fault_event_engine File: D:/College/Despro/portable-emergency-power-unit/fpga/hdl/fee.sv Line: 1
 Info (12127): Elaborating entity "portable_emergency_power_unit" for the top level hierarchy
-Info (12128): Elaborating entity "power_state_machine" for hierarchy "power_state_machine:u_fsm" File: D:/College/Despro/portable-emergency-power-unit/fpga/hdl/portable_emergency_power_unit.sv Line: 71
-Info (12128): Elaborating entity "fault_event_engine" for hierarchy "fault_event_engine:u_fee" File: D:/College/Despro/portable-emergency-power-unit/fpga/hdl/portable_emergency_power_unit.sv Line: 93
-Warning (10036): Verilog HDL or VHDL warning at fee.sv(31): object "critical_clear_sync" assigned a value but never read File: D:/College/Despro/portable-emergency-power-unit/fpga/hdl/fee.sv Line: 31
-Info (13000): Registers with preset signals will power-up high File: D:/College/Despro/portable-emergency-power-unit/fpga/hdl/fsm.sv Line: 370
+Info (12128): Elaborating entity "power_state_machine" for hierarchy "power_state_machine:u_fsm" File: D:/College/Despro/portable-emergency-power-unit/fpga/hdl/portable_emergency_power_unit.sv Line: 69
+Info (12128): Elaborating entity "fault_event_engine" for hierarchy "fault_event_engine:u_fee" File: D:/College/Despro/portable-emergency-power-unit/fpga/hdl/portable_emergency_power_unit.sv Line: 91
+Info (13000): Registers with preset signals will power-up high File: D:/College/Despro/portable-emergency-power-unit/fpga/hdl/fsm.sv Line: 366
 Info (13003): DEV_CLRn pin will set, and not reset, register with preset signal due to NOT Gate Push-Back
-Warning (13024): Output pins are stuck at VCC or GND
-    Warning (13410): Pin "shutdown_ack" is stuck at GND File: D:/College/Despro/portable-emergency-power-unit/fpga/hdl/portable_emergency_power_unit.sv Line: 23
 Info (286030): Timing-Driven Synthesis is running
 Info (16010): Generating hard_block partition "hard_block:auto_generated_inst"
     Info (16011): Adding 0 node(s), including 0 DDIO, 0 PLL, 0 transceiver and 0 LCELL
-Info (21057): Implemented 357 device resources after synthesis - the final resource count might be different
+Info (21057): Implemented 358 device resources after synthesis - the final resource count might be different
     Info (21058): Implemented 20 input pins
-    Info (21059): Implemented 21 output pins
-    Info (21061): Implemented 316 logic cells
-Info: Quartus Prime Analysis & Synthesis was successful. 0 errors, 4 warnings
+    Info (21059): Implemented 20 output pins
+    Info (21061): Implemented 318 logic cells
+Info: Quartus Prime Analysis & Synthesis was successful. 0 errors, 1 warning
     Info: Peak virtual memory: 4861 megabytes
-    Info: Processing ended: Fri Oct  2 18:11:48 2026
-    Info: Elapsed time: 00:00:07
-    Info: Total CPU time (on all processors): 00:00:16
+    Info: Processing ended: Sat Oct  3 11:24:00 2026
+    Info: Elapsed time: 00:00:12
+    Info: Total CPU time (on all processors): 00:00:15
 
 

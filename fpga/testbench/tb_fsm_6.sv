@@ -1,6 +1,6 @@
 `timescale 1ns / 1ps
 
-// FSM test case 6: STATE_WARNING entry, clears back to STATE_NORMAL, then an invalid current_state
+// FSM test case 6: STATE_WARNING entry via warning_request and via battery_low, each clears back to STATE_NORMAL, then an invalid current_state
 module tb_fsm_6;
 
     // clock and reset
@@ -115,10 +115,33 @@ module tb_fsm_6;
         assert (warning_led == 1'b0) else $error("warning_led still high after returning to STATE_NORMAL");
         assert (system_enable == 1'b1) else $error("system_enable not high in STATE_NORMAL");
 
+        // the battery runs low
+        repeat (3) @(posedge clk);
+        battery_low = 1'b1;
+
+        // wait for the FSM to reach STATE_WARNING again
+        wait (state_debug_bus == STATE_WARNING);
+        $display("[%0t] entered STATE_WARNING via battery_low", $time);
+        assert (warning_led == 1'b1) else $error("warning_led not high in STATE_WARNING via battery_low");
+        assert (system_enable == 1'b1) else $error("system_enable dropped in STATE_WARNING via battery_low");
+
+        // let it sit in STATE_WARNING for a bit
+        repeat (5) @(posedge clk);
+
+        // the battery recovers
+        battery_low = 1'b0;
+
+        // wait for the FSM to return to STATE_NORMAL
+        wait (state_debug_bus == STATE_NORMAL);
+        $display("[%0t] back in STATE_NORMAL after battery_low cleared", $time);
+        assert (warning_led == 1'b0) else $error("warning_led still high after battery_low cleared");
+        assert (system_enable == 1'b1) else $error("system_enable not high in STATE_NORMAL after battery_low cleared");
+
         // inject an illegal, non one-hot current_state
         repeat (3) @(posedge clk);
         force dut.current_state = 7'b1111111;
-        @(posedge clk);
+        // system_enable is registered, so it takes a second edge to show the default case
+        repeat (2) @(posedge clk);
         $display("[%0t] forced an invalid current_state", $time);
         assert (system_enable == 1'b0) else $error("system_enable not forced low while current_state is invalid");
         release dut.current_state;
