@@ -20,7 +20,6 @@ module portable_emergency_power_unit (
     // FSM outputs
     output logic system_enable,
     output logic warning_led,
-    output logic shutdown_ack,
     output logic fsm_critical_clear,
     output logic buzzer_alert,
     output logic recovery_mode,
@@ -63,7 +62,6 @@ module portable_emergency_power_unit (
 
         .system_enable     (system_enable),
         .warning_led       (warning_led),
-        .shutdown_ack      (shutdown_ack),
         .critical_clear    (fsm_critical_clear),
         .buzzer_alert      (buzzer_alert),
         .recovery_mode     (recovery_mode),

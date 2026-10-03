@@ -14,7 +14,6 @@ module power_state_machine(
 
 	output logic system_enable,
 	output logic warning_led,
-	output logic shutdown_ack,
 	output logic critical_clear,
 	output logic buzzer_alert,
 	output logic recovery_mode,
@@ -64,7 +63,6 @@ localparam logic [28:0] heartbeat_timeout_threshold = 29'd150_000_000; // placeh
 // temporary outputs registers
 logic system_enable_next;
 logic warning_led_next;
-logic shutdown_ack_next;
 logic critical_clear_next;
 logic buzzer_alert_next;
 logic recovery_mode_next;
@@ -202,7 +200,6 @@ always_comb begin
 	timer_start = 1'b0;
 	timer_threshold = 29'd0;
 	warning_led_next = 1'b0;
-	shutdown_ack_next = 1'b0;
 	critical_clear_next = 1'b0;
 	buzzer_alert_next = 1'b0;
 	recovery_mode_next = 1'b0;
@@ -361,7 +358,6 @@ always_ff @(posedge clk or negedge reset_n) begin
 	if (!reset_n) begin
 		system_enable   <= 1'b0;
 		warning_led     <= 1'b0;
-		shutdown_ack <= 1'b0;
 		critical_clear <= 1'b0;
 		buzzer_alert    <= 1'b0;
 		recovery_mode   <= 1'b0;
@@ -369,7 +365,6 @@ always_ff @(posedge clk or negedge reset_n) begin
 	end else begin
 		system_enable   <= system_enable_next;
 		warning_led     <= warning_led_next;
-		shutdown_ack <= shutdown_ack_next;
 		critical_clear <= critical_clear_next;
 		buzzer_alert    <= buzzer_alert_next;
 		recovery_mode   <= recovery_mode_next;

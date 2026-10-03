@@ -22,7 +22,6 @@ module tb_fsm_3;
     // dut outputs
     logic system_enable;
     logic warning_led;
-    logic shutdown_ack;
     logic critical_clear;
     logic buzzer_alert;
     logic recovery_mode;
@@ -54,7 +53,6 @@ module tb_fsm_3;
         .clk               (clk),
         .system_enable     (system_enable),
         .warning_led       (warning_led),
-        .shutdown_ack      (shutdown_ack),
         .critical_clear    (critical_clear),
         .buzzer_alert      (buzzer_alert),
         .recovery_mode     (recovery_mode),

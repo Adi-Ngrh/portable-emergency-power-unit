@@ -79,7 +79,6 @@ logic any_fault;
 logic warning_response_next;
 logic shutdown_response_next;
 logic critical_response_next;
-logic critical_clear_next;
 code_e fault_code_bus_next;
 pattern_e buzzer_pattern_next;
 
@@ -326,7 +325,7 @@ always_ff @(posedge clk or negedge reset_n) begin
 	else if (critical_response_next) begin
 		critical_response <= 1'b1;
 	end
-	else if (critical_clear) begin
+	else if (critical_clear_sync) begin
 		critical_response <= 1'b0;
 	end
 end
