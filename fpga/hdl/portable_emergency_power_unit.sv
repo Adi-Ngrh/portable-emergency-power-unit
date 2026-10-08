@@ -1,6 +1,6 @@
 `timescale 1ns / 1ps
 
-// top level: declares the FSM and FEE instances only, not wired together yet
+// top level: FSM and FEE with the critical_response/critical_clear loop wired internally
 module portable_emergency_power_unit (
     input  logic clk,
     input  logic reset_n,
@@ -12,7 +12,6 @@ module portable_emergency_power_unit (
     input  logic battery_critical,
     input  logic warning_request,
     input  logic shutdown_request,
-    input  logic critical_request,
     input  logic manual_power,
     input  logic manual_shutdown,
     input  logic shutdown_success,
@@ -20,7 +19,6 @@ module portable_emergency_power_unit (
     // FSM outputs
     output logic system_enable,
     output logic warning_led,
-    output logic fsm_critical_clear,
     output logic buzzer_alert,
     output logic recovery_mode,
     output logic [6:0] state_debug_bus,
@@ -33,7 +31,6 @@ module portable_emergency_power_unit (
     input  logic fan_failure,
     input  logic sensor_failure,
     input  logic communication_timeout,
-    input  logic fee_critical_clear,
 
     // FEE outputs
     output logic shutdown_response,
@@ -42,6 +39,9 @@ module portable_emergency_power_unit (
     output logic [2:0] fault_code_bus,
     output logic [1:0] buzzer_pattern
 );
+
+    // internal net: FSM critical_clear -> FEE critical_clear
+    logic fsm_critical_clear;
 
     // ==========================================
     // FSM (Power-State Machine) Instance
@@ -55,14 +55,14 @@ module portable_emergency_power_unit (
         .battery_critical  (battery_critical),
         .warning_request   (warning_request),
         .shutdown_request  (shutdown_request),
-        .critical_request  (critical_request),
+        .critical_request  (critical_response), // FEE latch -> FSM
         .manual_power      (manual_power),
         .manual_shutdown   (manual_shutdown),
         .shutdown_success  (shutdown_success),
 
         .system_enable     (system_enable),
         .warning_led       (warning_led),
-        .critical_clear    (fsm_critical_clear),
+        .critical_clear    (critical_clear),
         .buzzer_alert      (buzzer_alert),
         .recovery_mode     (recovery_mode),
         .state_debug_bus   (state_debug_bus)
@@ -81,7 +81,7 @@ module portable_emergency_power_unit (
         .fan_failure           (fan_failure),
         .sensor_failure        (sensor_failure),
         .communication_timeout (communication_timeout),
-        .critical_clear        (fee_critical_clear),
+        .critical_clear        (critical_clear), // FSM retry pulse -> FEE latch clear
 
         .shutdown_response     (shutdown_response),
         .warning_response      (warning_response),
