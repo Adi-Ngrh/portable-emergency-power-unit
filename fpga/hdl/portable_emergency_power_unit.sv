@@ -1,6 +1,6 @@
 `timescale 1ns / 1ps
 
-// top level: FSM and FEE with the critical_response/critical_clear loop wired internally
+// top level: FSM and FEE wired together internally (warning, shutdown and critical links)
 module portable_emergency_power_unit (
     input  logic clk,
     input  logic reset_n,
@@ -10,8 +10,6 @@ module portable_emergency_power_unit (
     input  logic mcu_heartbeat,
     input  logic battery_low,
     input  logic battery_critical,
-    input  logic warning_request,
-    input  logic shutdown_request,
     input  logic manual_power,
     input  logic manual_shutdown,
     input  logic shutdown_success,
@@ -53,8 +51,8 @@ module portable_emergency_power_unit (
         .mcu_heartbeat     (mcu_heartbeat),
         .battery_low       (battery_low),
         .battery_critical  (battery_critical),
-        .warning_request   (warning_request),
-        .shutdown_request  (shutdown_request),
+        .warning_request   (warning_response), // FEE warning -> FSM
+        .shutdown_request  (shutdown_response), // FEE shutdown -> FSM
         .critical_request  (critical_response), // FEE latch -> FSM
         .manual_power      (manual_power),
         .manual_shutdown   (manual_shutdown),
@@ -62,7 +60,7 @@ module portable_emergency_power_unit (
 
         .system_enable     (system_enable),
         .warning_led       (warning_led),
-        .critical_clear    (critical_clear),
+        .critical_clear    (fsm_critical_clear),
         .buzzer_alert      (buzzer_alert),
         .recovery_mode     (recovery_mode),
         .state_debug_bus   (state_debug_bus)
@@ -81,7 +79,7 @@ module portable_emergency_power_unit (
         .fan_failure           (fan_failure),
         .sensor_failure        (sensor_failure),
         .communication_timeout (communication_timeout),
-        .critical_clear        (critical_clear), // FSM retry pulse -> FEE latch clear
+        .critical_clear        (fsm_critical_clear), // FSM retry pulse -> FEE latch clear
 
         .shutdown_response     (shutdown_response),
         .warning_response      (warning_response),
