@@ -1,4 +1,6 @@
-module power_state_machine(
+module power_state_machine #(
+    parameter CLK_FREQ_HZ
+)(
 	input logic boot_success,
 	input logic mcu_heartbeat,
 	input logic battery_low,
@@ -16,8 +18,8 @@ module power_state_machine(
 	output logic warning_led,
 	output logic critical_clear,
 	output logic buzzer_alert,
-	output logic recovery_mode,
-	output logic [6:0] state_debug_bus
+	output logic recovery_mode
+	//output logic [6:0] state_debug_bus
 );
 
 // variable to store states (one-hot encoded)
@@ -33,7 +35,9 @@ typedef enum logic [6:0]
 } state_e;
 state_e current_state;
 state_e next_state;
+logic [6:0] state_debug_bus;
 state_e state_debug_bus_next;
+
 
 // synchronizer registers
 logic boot_success_raw, boot_success_sync;
@@ -52,13 +56,13 @@ logic timer_start;
 logic [28:0] timer_counter;
 logic [28:0] timer_threshold;
 logic timer_finish;
-localparam logic [28:0] boot_timeout = 29'd500_000_000;
-localparam logic [28:0] shutdown_timeout = 29'd500_000_000;
+localparam logic [28:0] boot_timeout = CLK_FREQ_HZ * 10;
+localparam logic [28:0] shutdown_timeout = CLK_FREQ_HZ * 10;
 
 // heartbeat watchdog: counts cycles since the last mcu_heartbeat toggle
 logic [28:0] heartbeat_counter;
 logic heartbeat_timeout;
-localparam logic [28:0] heartbeat_timeout_threshold = 29'd150_000_000; // placeholder ~3s @ 50MHz, set from real MCU heartbeat rate
+localparam logic [28:0] heartbeat_timeout_threshold = CLK_FREQ_HZ * 3; // placeholder ~3s @ 50MHz, set from real MCU heartbeat rate
 
 // temporary outputs registers
 logic system_enable_next;

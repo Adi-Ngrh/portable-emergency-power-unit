@@ -1,7 +1,9 @@
 `timescale 1ns / 1ps
 
 // top level: FSM and FEE wired together internally (warning, shutdown and critical links)
-module portable_emergency_power_unit (
+module portable_emergency_power_unit #(
+    parameter CLK_FREQ_HZ = 27_000_000   // 27 MHz internal clock (tang nano 4k), 50 MHz external clock preferred
+)(
     input  logic clk,
     input  logic reset_n,
 
@@ -19,7 +21,7 @@ module portable_emergency_power_unit (
     output logic warning_led,
     output logic buzzer_alert,
     output logic recovery_mode,
-    output logic [6:0] state_debug_bus,
+    //output logic [6:0] state_debug_bus,
 
     // FEE inputs
     input  logic overcurrent,
@@ -44,7 +46,9 @@ module portable_emergency_power_unit (
     // ==========================================
     // FSM (Power-State Machine) Instance
     // ==========================================
-    power_state_machine u_fsm (
+    power_state_machine #(
+    .CLK_FREQ_HZ (CLK_FREQ_HZ)
+    ) u_fsm (
         .clk               (clk),
         .reset_n           (reset_n),
         .boot_success      (boot_success),
@@ -62,14 +66,16 @@ module portable_emergency_power_unit (
         .warning_led       (warning_led),
         .critical_clear    (fsm_critical_clear),
         .buzzer_alert      (buzzer_alert),
-        .recovery_mode     (recovery_mode),
-        .state_debug_bus   (state_debug_bus)
+        .recovery_mode     (recovery_mode)
+        //.state_debug_bus   (state_debug_bus)
     );
 
     // ==========================================
     // FEE (Fault Event Engine) Instance
     // ==========================================
-    fault_event_engine u_fee (
+    fault_event_engine #(
+    .CLK_FREQ_HZ (CLK_FREQ_HZ)
+    ) u_fee (
         .clk                   (clk),
         .reset_n               (reset_n),
         .overcurrent           (overcurrent),

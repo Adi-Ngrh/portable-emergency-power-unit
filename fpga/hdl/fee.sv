@@ -1,4 +1,6 @@
-module fault_event_engine(
+module fault_event_engine #(
+    parameter CLK_FREQ_HZ
+)(
     input logic clk,
     input logic reset_n,
     
@@ -58,13 +60,13 @@ logic [15:0] overtemperature_counter;
 logic [18:0] fan_failure_counter;
 logic [15:0] sensor_failure_counter;
 logic [20:0] communication_timeout_counter;
-localparam logic [5:0] overcurrent_threshold = 6'd50;
-localparam logic [5:0] overvoltage_threshold = 6'd50;
-localparam logic [15:0] undervoltage_threshold = 16'd50_000;
-localparam logic [15:0] overtemperature_threshold = 16'd50_000;
-localparam logic [18:0] fan_failure_threshold = 19'd500_000;
-localparam logic [15:0] sensor_failure_threshold = 16'd50_000;
-localparam logic [20:0] communication_timeout_threshold = 21'd1_500_000;
+localparam logic [5:0]  overcurrent_threshold           = CLK_FREQ_HZ / 1_000_000;  // 1 us
+localparam logic [5:0]  overvoltage_threshold           = CLK_FREQ_HZ / 1_000_000;  // 1 us
+localparam logic [15:0] undervoltage_threshold          = CLK_FREQ_HZ / 1_000;      // 1 ms
+localparam logic [15:0] overtemperature_threshold       = CLK_FREQ_HZ / 1_000;      // 1 ms
+localparam logic [18:0] fan_failure_threshold           = CLK_FREQ_HZ / 100;        // 10 ms
+localparam logic [15:0] sensor_failure_threshold        = CLK_FREQ_HZ / 1_000;      // 1 ms
+localparam logic [20:0] communication_timeout_threshold = CLK_FREQ_HZ * 30 / 1_000; // 30 ms
 
 logic overcurrent_valid;
 logic overvoltage_valid;

@@ -1,25 +1,14 @@
-# ---------------------------------------------------------------
-# Markdown: ignore every .md file except README.md (any folder)
-# ---------------------------------------------------------------
 *.md
 !README.md
 
-# Local tooling / notes folder (whole directory, so nothing inside can be re-included)
 despro_mcp/
 
-# Machine-specific VS Code settings (ESP-IDF path, COM port...). The firmware
-# project has its own rules in firmware/portable-emergency-power-unit/.gitignore
 /.vscode/
 
-# ---------------------------------------------------------------
-# FPGA: keep only RTL (fpga/hdl) and testbenches (fpga/testbench)
-# ---------------------------------------------------------------
-# Vendor project folders are ignored completely
 fpga/quartus/
 fpga/gowin/
 fpga/docs/
 
-# Simulator output if a sim is ever launched outside the vendor folders
 fpga/**/work/
 fpga/**/rtl_work/
 fpga/**/transcript
@@ -28,9 +17,7 @@ fpga/**/*.wlf
 fpga/**/wlft*
 fpga/**/*.vcd
 
-# Editor / tool backups (fee.sv.bak, *.do.bak1 ... *.do.bak11)
 *.bak
 *.bak[0-9]*
 
-# Reference PDF
 FPGA_Template_2_IP_Siap_Tapeout-1.pdf
