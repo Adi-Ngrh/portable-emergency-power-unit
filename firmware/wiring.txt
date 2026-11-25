@@ -1,0 +1,25 @@
+WIRING TO ESP32 DEVKIT V1
+
+MONITOR
+VCC        -> VIN (5V)
+GND        -> GND
+CS         -> GPIO5
+RESET      -> GPIO17 (TX2)
+DC         -> GPIO16 (RX2)
+SDI (MOSI) -> GPIO23
+SCK        -> GPIO18
+LED        -> GPIO32
+SDO (MISO) -> GPIO19
+T_CLK, T_CS, T_DIN, T_DO, T_IRQ -> not connected
+
+INA226
+VCC        -> 3V3
+GND        -> GND
+SDA        -> GPIO21
+SCL        -> GPIO22
+A0, A1     -> GND
+
+DS18B20
+VDD        -> 3V3
+GND        -> GND
+DQ         -> GPIO4

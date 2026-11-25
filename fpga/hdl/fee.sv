@@ -1,5 +1,8 @@
 module fault_event_engine #(
-    parameter CLK_FREQ_HZ
+    parameter CLK_FREQ_HZ,
+    parameter OVERTEMP_SET_C   = 60,  // overtemperature trips at or above this temperature (°C)
+    parameter OVERTEMP_CLEAR_C = 55,  // overtemperature releases below this temperature (°C), must be lower than OVERTEMP_SET_C
+    parameter OVERTEMP_READING_COUNT = 3  // consecutive readings above the limit before overtemperature is reported (1 to 255)
 )(
     input logic clk,
     input logic reset_n,
@@ -8,7 +11,9 @@ module fault_event_engine #(
     input logic overcurrent,
     input logic overvoltage,
     input logic undervoltage,
-    input logic overtemperature,
+    input logic signed [15:0] temperature,  // from DS18B20 reader, signed, 1 LSB = 1/16 °C
+    input logic temperature_valid,          // high for 1 clock when a new temperature reading arrives
+    input logic temperature_error,          // high while the temperature reader reports a problem (no response, CRC error, timeout)
     input logic fan_failure,
     input logic sensor_failure,
     input logic communication_timeout,
@@ -17,7 +22,7 @@ module fault_event_engine #(
     // output signals
     output logic shutdown_response,
     output logic warning_response,
-	 output logic critical_response,
+	output logic critical_response,
     output logic [2:0] fault_code_bus,
     output logic [1:0] buzzer_pattern
 );
@@ -26,7 +31,6 @@ module fault_event_engine #(
 logic overcurrent_raw, overcurrent_sync;
 logic overvoltage_raw, overvoltage_sync;
 logic undervoltage_raw, undervoltage_sync;
-logic overtemperature_raw, overtemperature_sync;
 logic fan_failure_raw, fan_failure_sync;
 logic sensor_failure_raw, sensor_failure_sync;
 logic communication_timeout_raw, communication_timeout_sync;
@@ -52,18 +56,23 @@ typedef enum logic [1:0]
 	PATTERN_CRITICAL = 2'b11
 } pattern_e;
 
+// overtemperature threshold (converted from °C to DS18B20 format, 1 LSB = 1/16 °C)
+localparam logic signed [15:0] overtemperature_set_level   = OVERTEMP_SET_C * 16;
+localparam logic signed [15:0] overtemperature_clear_level = OVERTEMP_CLEAR_C * 16;
+logic overtemperature_over_limit;   // result of comparing temperature against the threshold
+logic overtemperature_result_ready; // high for 1 clock right after overtemperature_over_limit is updated
+
 // debounce related variables
 logic [5:0] overcurrent_counter;
 logic [5:0] overvoltage_counter;
 logic [15:0] undervoltage_counter;
-logic [15:0] overtemperature_counter;
+logic [7:0]  overtemperature_counter; // counts readings, not clock cycles
 logic [18:0] fan_failure_counter;
 logic [15:0] sensor_failure_counter;
 logic [20:0] communication_timeout_counter;
 localparam logic [5:0]  overcurrent_threshold           = CLK_FREQ_HZ / 1_000_000;  // 1 us
 localparam logic [5:0]  overvoltage_threshold           = CLK_FREQ_HZ / 1_000_000;  // 1 us
 localparam logic [15:0] undervoltage_threshold          = CLK_FREQ_HZ / 1_000;      // 1 ms
-localparam logic [15:0] overtemperature_threshold       = CLK_FREQ_HZ / 1_000;      // 1 ms
 localparam logic [18:0] fan_failure_threshold           = CLK_FREQ_HZ / 100;        // 10 ms
 localparam logic [15:0] sensor_failure_threshold        = CLK_FREQ_HZ / 1_000;      // 1 ms
 localparam logic [20:0] communication_timeout_threshold = CLK_FREQ_HZ * 30 / 1_000; // 30 ms
@@ -103,8 +112,6 @@ always_ff @(posedge clk or negedge reset_n) begin
         overvoltage_sync <= 1'b0;
         undervoltage_raw <= 1'b0;
         undervoltage_sync <= 1'b0;
-        overtemperature_raw <= 1'b0;
-        overtemperature_sync <= 1'b0;
         fan_failure_raw <= 1'b0;
         fan_failure_sync <= 1'b0;
         sensor_failure_raw <= 1'b0;
@@ -119,7 +126,6 @@ always_ff @(posedge clk or negedge reset_n) begin
         overcurrent_raw <= overcurrent;
         overvoltage_raw <= overvoltage;
         undervoltage_raw <= undervoltage;
-        overtemperature_raw <= overtemperature;
         fan_failure_raw <= fan_failure;
         sensor_failure_raw <= sensor_failure;
         communication_timeout_raw <= communication_timeout;
@@ -129,11 +135,36 @@ always_ff @(posedge clk or negedge reset_n) begin
         overcurrent_sync <= overcurrent_raw;
         overvoltage_sync <= overvoltage_raw;
         undervoltage_sync <= undervoltage_raw;
-        overtemperature_sync <= overtemperature_raw;
         fan_failure_sync <= fan_failure_raw;
         sensor_failure_sync <= sensor_failure_raw;
         communication_timeout_sync <= communication_timeout_raw;
 		  critical_clear_sync <= critical_clear_raw;
+    end
+end
+
+
+
+
+
+// overtemperature comparator with hysteresis (no synchronizer needed, input is on the same clock)
+always_ff @(posedge clk or negedge reset_n) begin
+    if (!reset_n) begin
+        overtemperature_over_limit <= 1'b0;
+        overtemperature_result_ready <= 1'b0;
+    end
+    else begin
+        // tells the debounce logic that a new comparison result is available on the next clock
+        overtemperature_result_ready <= temperature_valid;
+
+        if (temperature_valid) begin
+            if (temperature >= overtemperature_set_level) begin
+                overtemperature_over_limit <= 1'b1;
+            end
+            else if (temperature < overtemperature_clear_level) begin
+                overtemperature_over_limit <= 1'b0;
+            end
+            // between clear level and set level: keep previous value (hysteresis)
+        end
     end
 end
 
@@ -150,7 +181,7 @@ always_ff @(posedge clk or negedge reset_n) begin
         overvoltage_valid <= 1'b0;
         undervoltage_counter <= 16'd0;
         undervoltage_valid <= 1'b0;
-        overtemperature_counter <= 16'd0;
+        overtemperature_counter <= 8'd0;
         overtemperature_valid <= 1'b0;
         fan_failure_counter <= 19'd0;
         fan_failure_valid <= 1'b0;
@@ -198,16 +229,20 @@ always_ff @(posedge clk or negedge reset_n) begin
             undervoltage_valid <= 1'b0;
         end
 
-        // overtemperature (valid at >= 1 ms or 50000 clock cycles)
-        if (overtemperature_sync) begin
-            if (overtemperature_counter >= overtemperature_threshold) begin
-                overtemperature_valid <= 1'b1;
+        // overtemperature (valid after OVERTEMP_READING_COUNT consecutive readings above the limit)
+        if (overtemperature_result_ready) begin
+            if (overtemperature_over_limit) begin
+                if (overtemperature_counter < OVERTEMP_READING_COUNT) begin
+                    overtemperature_counter <= overtemperature_counter + 1'b1;
+                end
             end else begin
-                overtemperature_counter <= overtemperature_counter + 1'b1;
-                overtemperature_valid <= 1'b0;
+                overtemperature_counter <= 8'd0;
             end
+        end
+
+        if (overtemperature_counter >= OVERTEMP_READING_COUNT) begin
+            overtemperature_valid <= 1'b1;
         end else begin
-            overtemperature_counter <= 3'd0;
             overtemperature_valid <= 1'b0;
         end
 
@@ -224,8 +259,8 @@ always_ff @(posedge clk or negedge reset_n) begin
             fan_failure_valid <= 1'b0;
         end
 
-        // sensor_failure (valid at >= 1 ms or 50000 clock cycles)
-        if (sensor_failure_sync) begin
+        // sensor_failure pin or temperature reader error (valid at >= 1 ms or 50000 clock cycles)
+        if (sensor_failure_sync || temperature_error) begin
             if (sensor_failure_counter >= sensor_failure_threshold) begin
                 sensor_failure_valid <= 1'b1;
             end else begin
