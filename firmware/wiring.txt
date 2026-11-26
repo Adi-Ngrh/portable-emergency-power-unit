@@ -23,3 +23,14 @@ DS18B20
 VDD        -> 3V3
 GND        -> GND
 DQ         -> GPIO4
+
+FPGA (TANG NANO 4K)
+GND        -> GND
+pin 42     -> GPIO13 (mcu_heartbeat)
+pin 10     -> GPIO34 (fpga_heartbeat)
+pin 47     -> GPIO35 (fault_code_bus[0])
+pin 48     -> GPIO36 / VP (fault_code_bus[1])
+pin 1      -> GPIO39 / VN (fault_code_bus[2])
+
+POWER SWITCH (ROCKER)
+SIGNAL     -> GPIO33 and FPGA pin 39 (high = ON)
