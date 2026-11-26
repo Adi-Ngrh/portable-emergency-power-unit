@@ -2,15 +2,24 @@ module fault_event_engine #(
     parameter CLK_FREQ_HZ,
     parameter OVERTEMP_SET_C   = 60,  // overtemperature trips at or above this temperature (°C)
     parameter OVERTEMP_CLEAR_C = 55,  // overtemperature releases below this temperature (°C), must be lower than OVERTEMP_SET_C
-    parameter OVERTEMP_READING_COUNT = 3  // consecutive readings above the limit before overtemperature is reported (1 to 255)
+    parameter OVERTEMP_READING_COUNT = 3,  // consecutive readings above the limit before overtemperature is reported (1 to 255)
+    parameter OVERVOLTAGE_SET_MV    = 14_600,  // overvoltage trips at or above this bus voltage (mV), placeholder, must match the battery
+    parameter OVERVOLTAGE_CLEAR_MV  = 14_200,  // overvoltage releases below this bus voltage (mV), must be lower than OVERVOLTAGE_SET_MV
+    parameter UNDERVOLTAGE_SET_MV   = 10_500,  // undervoltage trips at or below this bus voltage (mV), placeholder, must match the battery
+    parameter UNDERVOLTAGE_CLEAR_MV = 11_000,  // undervoltage releases above this bus voltage (mV), must be higher than UNDERVOLTAGE_SET_MV
+    parameter OVERCURRENT_SET_MA    = 5_000,   // overcurrent trips at or above this current in either direction (mA), placeholder
+    parameter OVERCURRENT_CLEAR_MA  = 4_500,   // overcurrent releases below this current (mA), must be lower than OVERCURRENT_SET_MA
+    parameter CURRENT_LSB_UA        = 1000,    // current resolution of ina226_reader (microampere per bit), must match ina226_reader
+    parameter INA226_READING_COUNT  = 3        // consecutive INA226 readings beyond a limit before a voltage/current fault is reported (1 to 255)
 )(
     input logic clk,
     input logic reset_n,
     
     // input signals
-    input logic overcurrent,
-    input logic overvoltage,
-    input logic undervoltage,
+    input logic [15:0] bus_voltage,         // from INA226 reader, unsigned, 1 LSB = 1.25 mV
+    input logic signed [15:0] current,      // from INA226 reader, signed, 1 LSB = CURRENT_LSB_UA microampere
+    input logic measurement_valid,          // high for 1 clock when new bus_voltage and current values arrive
+    input logic measurement_error,          // high while the INA226 reader reports a problem (no answer, wrong data, timeout)
     input logic signed [15:0] temperature,  // from DS18B20 reader, signed, 1 LSB = 1/16 °C
     input logic temperature_valid,          // high for 1 clock when a new temperature reading arrives
     input logic temperature_error,          // high while the temperature reader reports a problem (no response, CRC error, timeout)
@@ -28,9 +37,6 @@ module fault_event_engine #(
 );
 
 // synchronizer registers
-logic overcurrent_raw, overcurrent_sync;
-logic overvoltage_raw, overvoltage_sync;
-logic undervoltage_raw, undervoltage_sync;
 logic fan_failure_raw, fan_failure_sync;
 logic sensor_failure_raw, sensor_failure_sync;
 logic communication_timeout_raw, communication_timeout_sync;
@@ -62,17 +68,29 @@ localparam logic signed [15:0] overtemperature_clear_level = OVERTEMP_CLEAR_C * 
 logic overtemperature_over_limit;   // result of comparing temperature against the threshold
 logic overtemperature_result_ready; // high for 1 clock right after overtemperature_over_limit is updated
 
+// voltage thresholds (converted from mV to INA226 bus voltage format, 1 LSB = 1.25 mV, so code = mV * 4 / 5)
+localparam logic [15:0] overvoltage_set_level    = OVERVOLTAGE_SET_MV * 4 / 5;
+localparam logic [15:0] overvoltage_clear_level  = OVERVOLTAGE_CLEAR_MV * 4 / 5;
+localparam logic [15:0] undervoltage_set_level   = UNDERVOLTAGE_SET_MV * 4 / 5;
+localparam logic [15:0] undervoltage_clear_level = UNDERVOLTAGE_CLEAR_MV * 4 / 5;
+
+// current thresholds (converted from mA to INA226 current format, 1 LSB = CURRENT_LSB_UA microampere)
+localparam logic signed [15:0] overcurrent_set_level   = OVERCURRENT_SET_MA * 1000 / CURRENT_LSB_UA;
+localparam logic signed [15:0] overcurrent_clear_level = OVERCURRENT_CLEAR_MA * 1000 / CURRENT_LSB_UA;
+
+logic overvoltage_over_limit;    // result of comparing bus_voltage against the overvoltage threshold
+logic undervoltage_under_limit;  // result of comparing bus_voltage against the undervoltage threshold
+logic overcurrent_over_limit;    // result of comparing current against the overcurrent threshold
+logic ina226_result_ready;       // high for 1 clock right after the three results above are updated
+
 // debounce related variables
-logic [5:0] overcurrent_counter;
-logic [5:0] overvoltage_counter;
-logic [15:0] undervoltage_counter;
+logic [7:0]  overcurrent_counter;     // counts readings, not clock cycles
+logic [7:0]  overvoltage_counter;     // counts readings, not clock cycles
+logic [7:0]  undervoltage_counter;    // counts readings, not clock cycles
 logic [7:0]  overtemperature_counter; // counts readings, not clock cycles
 logic [18:0] fan_failure_counter;
 logic [15:0] sensor_failure_counter;
 logic [20:0] communication_timeout_counter;
-localparam logic [5:0]  overcurrent_threshold           = CLK_FREQ_HZ / 1_000_000;  // 1 us
-localparam logic [5:0]  overvoltage_threshold           = CLK_FREQ_HZ / 1_000_000;  // 1 us
-localparam logic [15:0] undervoltage_threshold          = CLK_FREQ_HZ / 1_000;      // 1 ms
 localparam logic [18:0] fan_failure_threshold           = CLK_FREQ_HZ / 100;        // 10 ms
 localparam logic [15:0] sensor_failure_threshold        = CLK_FREQ_HZ / 1_000;      // 1 ms
 localparam logic [20:0] communication_timeout_threshold = CLK_FREQ_HZ * 30 / 1_000; // 30 ms
@@ -106,12 +124,6 @@ assign critical_response_next = overcurrent_valid || overvoltage_valid;
 // 2-stage synchronizer block for external fault inputs
 always_ff @(posedge clk or negedge reset_n) begin
     if (!reset_n) begin
-        overcurrent_raw <= 1'b0;
-        overcurrent_sync <= 1'b0;
-        overvoltage_raw <= 1'b0;
-        overvoltage_sync <= 1'b0;
-        undervoltage_raw <= 1'b0;
-        undervoltage_sync <= 1'b0;
         fan_failure_raw <= 1'b0;
         fan_failure_sync <= 1'b0;
         sensor_failure_raw <= 1'b0;
@@ -123,18 +135,12 @@ always_ff @(posedge clk or negedge reset_n) begin
     end 
 	 else begin
         // Stage 1: Capture raw inputs (susceptible to metastability)
-        overcurrent_raw <= overcurrent;
-        overvoltage_raw <= overvoltage;
-        undervoltage_raw <= undervoltage;
         fan_failure_raw <= fan_failure;
         sensor_failure_raw <= sensor_failure;
         communication_timeout_raw <= communication_timeout;
 		  critical_clear_raw <= critical_clear;
 
         // Stage 2: Capture settled signals
-        overcurrent_sync <= overcurrent_raw;
-        overvoltage_sync <= overvoltage_raw;
-        undervoltage_sync <= undervoltage_raw;
         fan_failure_sync <= fan_failure_raw;
         sensor_failure_sync <= sensor_failure_raw;
         communication_timeout_sync <= communication_timeout_raw;
@@ -172,14 +178,59 @@ end
 
 
 
+// voltage and current comparators with hysteresis (no synchronizer needed, inputs are on the same clock)
+always_ff @(posedge clk or negedge reset_n) begin
+    if (!reset_n) begin
+        overvoltage_over_limit <= 1'b0;
+        undervoltage_under_limit <= 1'b0;
+        overcurrent_over_limit <= 1'b0;
+        ina226_result_ready <= 1'b0;
+    end
+    else begin
+        // tells the debounce logic that new comparison results are available on the next clock
+        ina226_result_ready <= measurement_valid;
+
+        if (measurement_valid) begin
+            // overvoltage: trip at or above set level, release below clear level
+            if (bus_voltage >= overvoltage_set_level) begin
+                overvoltage_over_limit <= 1'b1;
+            end
+            else if (bus_voltage < overvoltage_clear_level) begin
+                overvoltage_over_limit <= 1'b0;
+            end
+
+            // undervoltage: trip at or below set level, release above clear level
+            if (bus_voltage <= undervoltage_set_level) begin
+                undervoltage_under_limit <= 1'b1;
+            end
+            else if (bus_voltage > undervoltage_clear_level) begin
+                undervoltage_under_limit <= 1'b0;
+            end
+
+            // overcurrent: the sign of current depends on its direction, so both directions are checked
+            if (current >= overcurrent_set_level || current <= -overcurrent_set_level) begin
+                overcurrent_over_limit <= 1'b1;
+            end
+            else if (current < overcurrent_clear_level && current > -overcurrent_clear_level) begin
+                overcurrent_over_limit <= 1'b0;
+            end
+            // between clear level and set level: keep previous values (hysteresis)
+        end
+    end
+end
+
+
+
+
+
 // debounce logic
 always_ff @(posedge clk or negedge reset_n) begin
     if (!reset_n) begin
-        overcurrent_counter <= 6'd0;
+        overcurrent_counter <= 8'd0;
         overcurrent_valid <= 1'b0;
-        overvoltage_counter <= 6'd0;
+        overvoltage_counter <= 8'd0;
         overvoltage_valid <= 1'b0;
-        undervoltage_counter <= 16'd0;
+        undervoltage_counter <= 8'd0;
         undervoltage_valid <= 1'b0;
         overtemperature_counter <= 8'd0;
         overtemperature_valid <= 1'b0;
@@ -190,42 +241,54 @@ always_ff @(posedge clk or negedge reset_n) begin
         communication_timeout_counter <= 21'd0;
         communication_timeout_valid <= 1'b0;
     end else begin
-        // overcurrent (valid at >= 1 us or 50 clock cycles)
-        if (overcurrent_sync) begin
-            if (overcurrent_counter >= overcurrent_threshold) begin
-                overcurrent_valid <= 1'b1;
+        // overcurrent (valid after INA226_READING_COUNT consecutive readings above the limit)
+        if (ina226_result_ready) begin
+            if (overcurrent_over_limit) begin
+                if (overcurrent_counter < INA226_READING_COUNT) begin
+                    overcurrent_counter <= overcurrent_counter + 1'b1;
+                end
             end else begin
-                overcurrent_counter <= overcurrent_counter + 1'b1;
-                overcurrent_valid <= 1'b0;
+                overcurrent_counter <= 8'd0;
             end
+        end
+
+        if (overcurrent_counter >= INA226_READING_COUNT) begin
+            overcurrent_valid <= 1'b1;
         end else begin
-            overcurrent_counter <= 3'd0;
             overcurrent_valid <= 1'b0;
         end
 
-        // overvoltage (valid at >= 1 us or 50 clock cycles)
-        if (overvoltage_sync) begin
-            if (overvoltage_counter >= overvoltage_threshold) begin
-                overvoltage_valid <= 1'b1;
+        // overvoltage (valid after INA226_READING_COUNT consecutive readings above the limit)
+        if (ina226_result_ready) begin
+            if (overvoltage_over_limit) begin
+                if (overvoltage_counter < INA226_READING_COUNT) begin
+                    overvoltage_counter <= overvoltage_counter + 1'b1;
+                end
             end else begin
-                overvoltage_counter <= overvoltage_counter + 1'b1;
-                overvoltage_valid <= 1'b0;
+                overvoltage_counter <= 8'd0;
             end
+        end
+
+        if (overvoltage_counter >= INA226_READING_COUNT) begin
+            overvoltage_valid <= 1'b1;
         end else begin
-            overvoltage_counter <= 3'd0;
             overvoltage_valid <= 1'b0;
         end
 
-        // undervoltage (valid at >= 1 ms or 50000 clock cycles)
-        if (undervoltage_sync) begin
-            if (undervoltage_counter >= undervoltage_threshold) begin
-                undervoltage_valid <= 1'b1;
+        // undervoltage (valid after INA226_READING_COUNT consecutive readings below the limit)
+        if (ina226_result_ready) begin
+            if (undervoltage_under_limit) begin
+                if (undervoltage_counter < INA226_READING_COUNT) begin
+                    undervoltage_counter <= undervoltage_counter + 1'b1;
+                end
             end else begin
-                undervoltage_counter <= undervoltage_counter + 1'b1;
-                undervoltage_valid <= 1'b0;
+                undervoltage_counter <= 8'd0;
             end
+        end
+
+        if (undervoltage_counter >= INA226_READING_COUNT) begin
+            undervoltage_valid <= 1'b1;
         end else begin
-            undervoltage_counter <= 3'd0;
             undervoltage_valid <= 1'b0;
         end
 
@@ -259,8 +322,8 @@ always_ff @(posedge clk or negedge reset_n) begin
             fan_failure_valid <= 1'b0;
         end
 
-        // sensor_failure pin or temperature reader error (valid at >= 1 ms or 50000 clock cycles)
-        if (sensor_failure_sync || temperature_error) begin
+        // sensor_failure pin, temperature reader error or INA226 reader error (valid at >= 1 ms or 50000 clock cycles)
+        if (sensor_failure_sync || temperature_error || measurement_error) begin
             if (sensor_failure_counter >= sensor_failure_threshold) begin
                 sensor_failure_valid <= 1'b1;
             end else begin

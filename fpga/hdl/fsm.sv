@@ -15,7 +15,9 @@ module power_state_machine #(
 	input logic clk,
 
 	output logic system_enable,
-	output logic warning_led,
+	output logic normal_led,   // NORMAL
+	output logic warning_led,  // WARNING, SHUTDOWN, RECOVERY
+	output logic critical_led, // CRITICAL
 	output logic critical_clear,
 	output logic buzzer_alert,
 	output logic recovery_mode
@@ -66,7 +68,9 @@ localparam logic [28:0] heartbeat_timeout_threshold = CLK_FREQ_HZ * 3; // placeh
 
 // temporary outputs registers
 logic system_enable_next;
+logic normal_led_next;   // status LEDs: at most one is on, none in STATE_OFF and STATE_BOOT
 logic warning_led_next;
+logic critical_led_next;
 logic critical_clear_next;
 logic buzzer_alert_next;
 logic recovery_mode_next;
@@ -203,7 +207,9 @@ always_comb begin
 	system_enable_next = 1'b0;
 	timer_start = 1'b0;
 	timer_threshold = 29'd0;
+	normal_led_next = 1'b0;
 	warning_led_next = 1'b0;
+	critical_led_next = 1'b0;
 	critical_clear_next = 1'b0;
 	buzzer_alert_next = 1'b0;
 	recovery_mode_next = 1'b0;
@@ -240,6 +246,7 @@ always_comb begin
 		// STATE_SHUTDOWN, STATE_RECOVERY, or STATE_WARNING.
 		STATE_NORMAL: begin
 			system_enable_next = 1'b1;	
+			normal_led_next    = 1'b1;
 		end
 
 		// STATE_WARNING: Non-immediate issue exists.
@@ -256,7 +263,7 @@ always_comb begin
 		// STATE_CRITICAL: Immediate danger. System block turned off, alarm asserted.
 		// Transitions to STATE_BOOT when the user retries and the retry budget isn't spent.
 		STATE_CRITICAL: begin
-			warning_led_next   = 1'b1;
+			critical_led_next  = 1'b1;
 			buzzer_alert_next  = 1'b1;
 			if (critical_retry_allowed) begin
 				critical_clear_next = 1'b1;
@@ -268,6 +275,7 @@ always_comb begin
 		// Transitions to STATE_RECOVERY or STATE_OFF once shutdown completes.
 		STATE_SHUTDOWN: begin
 			system_enable_next = 1'b1;
+			warning_led_next   = 1'b1;
 			timer_threshold = shutdown_timeout;
 			timer_start = 1'b1;
 			if (shutdown_success_sync) begin
@@ -291,6 +299,7 @@ always_comb begin
 		// Transitions to STATE_BOOT once battery_critical clears.
 		STATE_RECOVERY: begin
 			recovery_mode_next = 1'b1;
+			warning_led_next   = 1'b1;
 			if (!battery_critical_sync) begin
 				next_state = STATE_BOOT;
 			end
@@ -361,14 +370,18 @@ end
 always_ff @(posedge clk or negedge reset_n) begin
 	if (!reset_n) begin
 		system_enable   <= 1'b0;
+		normal_led      <= 1'b0;
 		warning_led     <= 1'b0;
+		critical_led    <= 1'b0;
 		critical_clear <= 1'b0;
 		buzzer_alert    <= 1'b0;
 		recovery_mode   <= 1'b0;
 		state_debug_bus <= STATE_OFF;
 	end else begin
 		system_enable   <= system_enable_next;
+		normal_led      <= normal_led_next;
 		warning_led     <= warning_led_next;
+		critical_led    <= critical_led_next;
 		critical_clear <= critical_clear_next;
 		buzzer_alert    <= buzzer_alert_next;
 		recovery_mode   <= recovery_mode_next;

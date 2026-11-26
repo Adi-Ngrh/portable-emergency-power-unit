@@ -8,10 +8,12 @@
  */
 void psu_event_log_init(psu_event_log_t *log)
 {
-    log->next       = 0;
-    log->count      = 0;
-    log->last_state = FSM_STATE_OFF;
-    log->last_fault = FEE_CODE_DEFAULT;
+    log->next            = 0;
+    log->count           = 0;
+    log->last_state      = FSM_STATE_OFF;
+    log->last_fault      = FEE_CODE_DEFAULT;
+    log->last_fpga_alive = false;
+    log->last_fpga_fault = FEE_CODE_DEFAULT;
 }
 
 /**
@@ -38,7 +40,32 @@ void psu_event_log_add(psu_event_log_t *log, uint32_t now_ms,
 }
 
 /**
- * @brief Log FSM state changes and FEE fault code changes.
+ * @brief Log one fault code change: set ("E3 OVERTEMP") or cleared ("E3 OVERTEMP CLEARED").
+ * @param[in,out] log Event log.
+ * @param now_ms      Current uptime in ms.
+ * @param source      Text put in front, "" for the MCU, "FPGA " for the FPGA.
+ * @param old_fault   Fault code before the change.
+ * @param new_fault   Fault code after the change.
+ */
+static void event_log_fault_change(psu_event_log_t *log, uint32_t now_ms, const char *source,
+                                   psu_fee_code_t old_fault, psu_fee_code_t new_fault)
+{
+    char text[EVENT_LOG_TEXT_LEN];
+
+    if (new_fault != FEE_CODE_DEFAULT) {
+        snprintf(text, sizeof(text), "%sE%u %s",
+                 source, (unsigned int)new_fault, psu_event_log_fault_name(new_fault));
+        psu_event_log_add(log, now_ms, psu_event_log_fault_level(new_fault), text);
+    }
+    else {
+        snprintf(text, sizeof(text), "%sE%u %s CLEARED",
+                 source, (unsigned int)old_fault, psu_event_log_fault_name(old_fault));
+        psu_event_log_add(log, now_ms, EVENT_LEVEL_CLEARED, text);
+    }
+}
+
+/**
+ * @brief Log MCU FSM state changes and MCU FEE fault code changes.
  * @param[in,out] log Event log.
  * @param now_ms      Current uptime in ms.
  * @param state       Current FSM state.
@@ -50,16 +77,7 @@ void psu_event_log_track(psu_event_log_t *log, uint32_t now_ms,
     char text[EVENT_LOG_TEXT_LEN];
 
     if (fault != log->last_fault) {
-        if (fault != FEE_CODE_DEFAULT) {
-            snprintf(text, sizeof(text), "E%u %s",
-                     (unsigned int)fault, psu_event_log_fault_name(fault));
-            psu_event_log_add(log, now_ms, psu_event_log_fault_level(fault), text);
-        }
-        else {
-            snprintf(text, sizeof(text), "E%u %s CLEARED",
-                     (unsigned int)log->last_fault, psu_event_log_fault_name(log->last_fault));
-            psu_event_log_add(log, now_ms, EVENT_LEVEL_CLEARED, text);
-        }
+        event_log_fault_change(log, now_ms, "", log->last_fault, fault);
         log->last_fault = fault;
     }
 
@@ -68,6 +86,37 @@ void psu_event_log_track(psu_event_log_t *log, uint32_t now_ms,
                  psu_event_log_state_name(log->last_state), psu_event_log_state_name(state));
         psu_event_log_add(log, now_ms, EVENT_LEVEL_INFO, text);
         log->last_state = state;
+    }
+}
+
+/**
+ * @brief Log FPGA heartbeat changes and FPGA fault code changes.
+ * @param[in,out] log Event log.
+ * @param now_ms      Current uptime in ms.
+ * @param fpga_alive  FPGA heartbeat seen in the last 3 s.
+ * @param fpga_fault  FPGA fault code (highest active fault only), ignored while the FPGA is not alive.
+ */
+void psu_event_log_track_fpga(psu_event_log_t *log, uint32_t now_ms,
+                              bool fpga_alive, psu_fee_code_t fpga_fault)
+{
+    if (fpga_alive != log->last_fpga_alive) {
+        if (fpga_alive) {
+            psu_event_log_add(log, now_ms, EVENT_LEVEL_CLEARED, "FPGA HEARTBEAT OK");
+        }
+        else {
+            psu_event_log_add(log, now_ms, EVENT_LEVEL_SHUTDOWN, "FPGA HEARTBEAT LOST");
+        }
+        log->last_fpga_alive = fpga_alive;
+    }
+
+    /* fault pins mean nothing while the FPGA is not running */
+    if (!fpga_alive) {
+        return;
+    }
+
+    if (fpga_fault != log->last_fpga_fault) {
+        event_log_fault_change(log, now_ms, "FPGA ", log->last_fpga_fault, fpga_fault);
+        log->last_fpga_fault = fpga_fault;
     }
 }
 

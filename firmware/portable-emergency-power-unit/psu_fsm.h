@@ -31,15 +31,18 @@ typedef struct
     bool warning_request;    /* from FEE */
     bool shutdown_request;   /* from FEE */
     bool critical_request;   /* from FEE */
-    bool manual_power;       /* button level */
+    bool manual_power;       /* power switch level, true = ON */
     bool manual_shutdown;
+    bool fpga_alive;         /* FPGA heartbeat seen in the last 3 s, MCU only */
 } psu_fsm_inputs_t;
 
 /* FSM outputs */
 typedef struct
 {
     bool system_enable;
-    bool warning_led;
+    bool normal_led;         /* NORMAL, same as fsm.sv */
+    bool warning_led;        /* WARNING, SHUTDOWN, RECOVERY */
+    bool critical_led;       /* CRITICAL */
     bool critical_clear;     /* one-update pulse to FEE */
     bool buzzer_alert;
     bool recovery_mode;

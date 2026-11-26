@@ -63,6 +63,7 @@ typedef enum
     UI_FIELD_USB_A,
     UI_FIELD_USB_C,
     UI_FIELD_ACTIVE_FAULT,
+    UI_FIELD_FPGA_FAULT,
     UI_FIELD_LOG_0,                                  /* newest event, rows follow in order */
     UI_FIELD_COUNT = UI_FIELD_LOG_0 + UI_LOG_ROWS
 } psu_ui_field_t;

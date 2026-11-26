@@ -41,6 +41,7 @@ const psu_ui_element_t g_ui_layout[] = {
     /* event log */
     { UI_FRAME,        2,   148, 316, 90, UI_COLOR_BORDER,   0, NULL,                  UI_FIELD_NONE },
     { UI_LABEL,        8,   152, 108, 8,  UI_COLOR_DIM,      1, "EVENT LOG (UPTIME)",  UI_FIELD_NONE },
+    { UI_VALUE,        164, 152, 72,  8,  UI_COLOR_DIM,      1, NULL,                  UI_FIELD_FPGA_FAULT },
     { UI_VALUE,        242, 152, 72,  8,  UI_COLOR_DIM,      1, NULL,                  UI_FIELD_ACTIVE_FAULT },
     { UI_VALUE,        8,   LOG_Y0 + 0 * LOG_PITCH, 300, 8, UI_COLOR_TEXT, 1, NULL,  UI_FIELD_LOG_0 + 0 },
     { UI_VALUE,        8,   LOG_Y0 + 1 * LOG_PITCH, 300, 8, UI_COLOR_TEXT, 1, NULL,  UI_FIELD_LOG_0 + 1 },

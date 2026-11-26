@@ -22,7 +22,9 @@ void psu_fsm_init(psu_fsm_t *fsm)
     fsm->retry_count         = 0;
 
     fsm->out.system_enable    = false;
+    fsm->out.normal_led       = false;
     fsm->out.warning_led      = false;
+    fsm->out.critical_led     = false;
     fsm->out.critical_clear   = false;
     fsm->out.buzzer_alert     = false;
     fsm->out.recovery_mode    = false;
@@ -45,21 +47,25 @@ void psu_fsm_update(psu_fsm_t *fsm, const psu_fsm_inputs_t *in)
     psu_fsm_outputs_t next_out;
 
     bool manual_power_pressed;
+    bool fpga_lost;
     bool shutdown_trigger;
     bool warning_trigger;
     bool critical_trigger;
     bool critical_retry_allowed;
 
-    /* triggers */
-    manual_power_pressed   = in->manual_power && !fsm->manual_power_prev;
-    shutdown_trigger       = in->manual_shutdown || in->shutdown_request || in->battery_critical;
+    /* triggers, fpga_lost is MCU only: a frozen safety monitor ends in a graceful shutdown */
+    manual_power_pressed  = in->manual_power && !fsm->manual_power_prev;
+    fpga_lost              = !in->fpga_alive;
+    shutdown_trigger       = in->manual_shutdown || in->shutdown_request || in->battery_critical || fpga_lost;
     warning_trigger        = in->warning_request || in->battery_low;
     critical_trigger       = in->critical_request;
-    critical_retry_allowed = manual_power_pressed && (fsm->retry_count < FSM_MAX_RETRY);
+    critical_retry_allowed = manual_power_pressed && (fsm->retry_count < FSM_MAX_RETRY) && in->fpga_alive;
 
-    /* default outputs */
+    /* default outputs, at most one LED is set below */
     next_out.system_enable    = false;
+    next_out.normal_led       = false;
     next_out.warning_led      = false;
+    next_out.critical_led     = false;
     next_out.critical_clear   = false;
     next_out.buzzer_alert     = false;
     next_out.recovery_mode    = false;
@@ -75,10 +81,10 @@ void psu_fsm_update(psu_fsm_t *fsm, const psu_fsm_inputs_t *in)
 
     switch (fsm->state) {
 
-    /* OFF: wait for power button */
+    /* OFF: wait for power button, BOOT only while the FPGA is alive */
     case FSM_STATE_OFF:
         next_out.shutdown_success = true;
-        if (manual_power_pressed) {
+        if (manual_power_pressed && in->fpga_alive) {
             next_state = FSM_STATE_BOOT;
         }
         break;
@@ -101,6 +107,7 @@ void psu_fsm_update(psu_fsm_t *fsm, const psu_fsm_inputs_t *in)
     case FSM_STATE_NORMAL:
         next_out.system_enable = true;
         next_out.boot_success  = true;
+        next_out.normal_led    = true;
         break;
 
     /* WARNING: back to NORMAL when warnings clear */
@@ -115,7 +122,7 @@ void psu_fsm_update(psu_fsm_t *fsm, const psu_fsm_inputs_t *in)
 
     /* CRITICAL: system off, retry via power button */
     case FSM_STATE_CRITICAL:
-        next_out.warning_led  = true;
+        next_out.critical_led = true;
         next_out.buzzer_alert = true;
         if (critical_retry_allowed) {
             next_out.critical_clear = true;
@@ -126,6 +133,7 @@ void psu_fsm_update(psu_fsm_t *fsm, const psu_fsm_inputs_t *in)
     /* SHUTDOWN: wait for main system shutdown */
     case FSM_STATE_SHUTDOWN:
         next_out.system_enable = true;
+        next_out.warning_led   = true;
         if (in->shutdown_done) {
             next_out.system_enable    = false;
             next_out.shutdown_success = true;
@@ -133,11 +141,12 @@ void psu_fsm_update(psu_fsm_t *fsm, const psu_fsm_inputs_t *in)
         }
         break;
 
-    /* RECOVERY: reboot when battery_critical clears */
+    /* RECOVERY: reboot when battery_critical clears and the FPGA is alive */
     case FSM_STATE_RECOVERY:
         next_out.recovery_mode    = true;
         next_out.shutdown_success = true;
-        if (!in->battery_critical) {
+        next_out.warning_led      = true;
+        if (!in->battery_critical && in->fpga_alive) {
             next_state = FSM_STATE_BOOT;
         }
         break;

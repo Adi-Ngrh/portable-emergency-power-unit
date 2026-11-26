@@ -11,7 +11,7 @@ extern "C" {
 #endif
 
 #define EVENT_LOG_SIZE      8    /* events kept in RAM, oldest is dropped */
-#define EVENT_LOG_TEXT_LEN  32   /* longest text is "STATE SHUTDOWN -> RECOVERY" */
+#define EVENT_LOG_TEXT_LEN  32   /* longest text is "FPGA E5 UNDERVOLTAGE CLEARED" */
 
 /* event class, decides the log color */
 typedef enum
@@ -35,10 +35,12 @@ typedef struct
 typedef struct
 {
     psu_event_t     entry[EVENT_LOG_SIZE];
-    uint8_t         next;         /* slot for the next event */
-    uint8_t         count;        /* stored events */
-    psu_fsm_state_t last_state;   /* for change detection */
-    psu_fee_code_t  last_fault;   /* for change detection */
+    uint8_t         next;             /* slot for the next event */
+    uint8_t         count;            /* stored events */
+    psu_fsm_state_t last_state;       /* for change detection */
+    psu_fee_code_t  last_fault;       /* for change detection */
+    bool            last_fpga_alive;  /* for change detection */
+    psu_fee_code_t  last_fpga_fault;  /* for change detection */
 } psu_event_log_t;
 
 void               psu_event_log_init(psu_event_log_t *log);
@@ -46,6 +48,8 @@ void               psu_event_log_add(psu_event_log_t *log, uint32_t now_ms,
                                      psu_event_level_t level, const char *text);
 void               psu_event_log_track(psu_event_log_t *log, uint32_t now_ms,
                                        psu_fsm_state_t state, psu_fee_code_t fault);
+void               psu_event_log_track_fpga(psu_event_log_t *log, uint32_t now_ms,
+                                            bool fpga_alive, psu_fee_code_t fpga_fault);
 const psu_event_t *psu_event_log_get(const psu_event_log_t *log, uint8_t index);
 const char        *psu_event_log_state_name(psu_fsm_state_t state);
 const char        *psu_event_log_fault_name(psu_fee_code_t code);

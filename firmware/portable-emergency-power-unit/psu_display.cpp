@@ -225,7 +225,7 @@ static void display_measurement_texts(psu_display_data_t *data)
 }
 
 /**
- * @brief Refresh state, battery, Wi-Fi, fan, port and active fault fields.
+ * @brief Refresh state, battery, Wi-Fi, fan, port, active fault and FPGA fault fields.
  * @param[in,out] data Display data.
  * @param status       System status.
  */
@@ -294,6 +294,19 @@ static void display_status_texts(psu_display_data_t *data, const psu_display_sta
         display_set_field(data, UI_FIELD_ACTIVE_FAULT, text,
                           display_level_color(psu_event_log_fault_level(status->fault_code)), UI_COLOR_BG);
     }
+
+    /* FPGA fault, "--" while its heartbeat is missing (pins mean nothing then) */
+    if (!status->fpga_alive) {
+        display_set_field(data, UI_FIELD_FPGA_FAULT, "FPGA: --", UI_COLOR_DIM, UI_COLOR_BG);
+    }
+    else if (status->fpga_fault_code == FEE_CODE_DEFAULT) {
+        display_set_field(data, UI_FIELD_FPGA_FAULT, "FPGA: NONE", UI_COLOR_DIM, UI_COLOR_BG);
+    }
+    else {
+        snprintf(text, sizeof(text), "FPGA: E%u", (unsigned int)status->fpga_fault_code);
+        fg = display_level_color(psu_event_log_fault_level(status->fpga_fault_code));
+        display_set_field(data, UI_FIELD_FPGA_FAULT, text, fg, UI_COLOR_BG);
+    }
 }
 
 /**
@@ -340,6 +353,8 @@ void psu_display_status_init(psu_display_status_t *status)
 {
     status->state           = FSM_STATE_OFF;
     status->fault_code      = FEE_CODE_DEFAULT;
+    status->fpga_alive      = false;
+    status->fpga_fault_code = FEE_CODE_DEFAULT;
     status->battery_percent = -1;
     status->wifi_level      = -1;
     status->charge          = DISPLAY_SWITCH_OFF;
