@@ -35,4 +35,5 @@ pin 41     -> GPIO2 (boot_success)
 pin 40     -> GPIO15 (shutdown_success)
 
 POWER SWITCH (ROCKER)
-SIGNAL     -> GPIO33 and FPGA pin 39 (high = ON)
+SIGNAL     -> GPIO33 and FPGA pin 39 (high = ON) 
+note : change GPIO33 to something else, the solder cause it to short.
