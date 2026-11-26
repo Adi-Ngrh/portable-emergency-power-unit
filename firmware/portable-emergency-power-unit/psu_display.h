@@ -41,7 +41,7 @@ typedef struct
 /* values prepared for the display */
 typedef struct
 {
-    int16_t  temperature;                         /* hottest sensor, 1 LSB = 1/16 degC */
+    int16_t  temperature;                         /* 1 LSB = 1/16 degC */
     int32_t  voltage_mv;
     int32_t  current_ma;
     int32_t  power_mw;

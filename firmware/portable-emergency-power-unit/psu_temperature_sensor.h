@@ -8,12 +8,12 @@
 extern "C" {
 #endif
 
-/* temperature reading from all DS18B20 */
+/* temperature reading from the DS18B20 */
 typedef struct
 {
-    int16_t temperature;  /* hottest good sensor, 1 LSB = 1/16 degC */
+    int16_t temperature;  /* 1 LSB = 1/16 degC */
     bool    valid;        /* new reading this update */
-    bool    error;        /* any sensor failed on the last reading */
+    bool    error;        /* sensor failed on the last reading */
 } psu_temperature_reading_t;
 
 bool psu_temperature_sensor_init(void);

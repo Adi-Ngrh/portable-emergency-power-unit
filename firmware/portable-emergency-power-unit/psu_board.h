@@ -7,7 +7,7 @@
 
 #define SDA_PIN         21     /* I2C SDA */
 #define SCL_PIN         22     /* I2C SCL */
-#define DS18B20_PIN     4      /* OneWire bus, 2 sensors in parallel */
+#define DS18B20_PIN     4      /* OneWire bus, 1 sensor */
 #define RELAY_A_PIN     25     /* charge path: grid - charger - relay A - battery */
 #define RELAY_B_PIN     27     /* discharge path: BMS - relay B - inverter & USB-C */
 #define FAN_PIN         26     /* 12 V fan MOSFET */
@@ -35,10 +35,6 @@
 
 #define I2C_CLOCK_HZ    100000UL   /* 100 kHz */
 #define INA226_ADDR     0x40       /* A0 and A1 tied to GND */
-
-/* ==================== FITTED PARTS ==================== */
-
-#define DS18B20_COUNT      2        /* sensors on the OneWire bus */
 
 #ifdef __cplusplus
 extern "C" {

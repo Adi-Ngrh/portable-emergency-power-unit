@@ -26,7 +26,7 @@ const psu_ui_element_t g_ui_layout[] = {
 
     /* temperature tile */
     { UI_FRAME,        206, 26,  112, 68, UI_COLOR_BORDER,   0, NULL,                  UI_FIELD_NONE },
-    { UI_LABEL,        212, 30,  84,  8,  UI_COLOR_DIM,      1, "TEMP (HOTTEST)",      UI_FIELD_NONE },
+    { UI_LABEL,        212, 30,  84,  8,  UI_COLOR_DIM,      1, "TEMPERATURE",         UI_FIELD_NONE },
     { UI_VALUE,        212, 48,  84,  8,  UI_COLOR_TEXT,     1, NULL,                  UI_FIELD_TEMPERATURE },
     { UI_VALUE,        212, 70,  84,  8,  UI_COLOR_TEXT,     1, NULL,                  UI_FIELD_FAN },
 

@@ -23,28 +23,25 @@ static OneWire g_one_wire((uint8_t)DS18B20_PIN);
 static DallasTemperature g_temp_sensor(&g_one_wire);
 
 /* DS18B20 state */
-static uint8_t  g_temp_addr[DS18B20_COUNT][DS18B20_ADDR_BYTES];
+static uint8_t  g_temp_addr[DS18B20_ADDR_BYTES];   /* ROM address of the sensor */
 static bool     g_temp_converting = false;
 static uint32_t g_temp_request_ms = 0;
 
 /**
- * @brief Find all DS18B20 and set 12-bit, non-blocking conversions.
- * @return true if every sensor is found.
+ * @brief Find the DS18B20 and set 12-bit, non-blocking conversions.
+ * @return true if exactly one sensor is found.
  */
 bool psu_temperature_sensor_init(void)
 {
     bool ok = true;
-    int  i;
 
-    /* all sensors must be found */
+    /* exactly one sensor on the bus */
     g_temp_sensor.begin();
-    if (g_temp_sensor.getDeviceCount() != DS18B20_COUNT) {
+    if (g_temp_sensor.getDeviceCount() != 1) {
         ok = false;
     }
-    for (i = 0; i < DS18B20_COUNT; i++) {
-        if (!g_temp_sensor.getAddress(g_temp_addr[i], (uint8_t)i)) {
-            ok = false;
-        }
+    if (!g_temp_sensor.getAddress(g_temp_addr, (uint8_t)0)) {
+        ok = false;
     }
 
     /* 12-bit, non-blocking conversions */
@@ -56,18 +53,13 @@ bool psu_temperature_sensor_init(void)
 }
 
 /**
- * @brief Non-blocking read of all DS18B20, reports the hottest one.
+ * @brief Non-blocking read of the DS18B20.
  * @param[out] reading Temperature reading, updated when a conversion finishes.
  */
 void psu_temperature_read(psu_temperature_reading_t *reading)
 {
-    uint32_t now_ms   = millis();
-    int16_t  hottest  = INT16_MIN;
-    bool     any_good = false;
-    bool     any_bad  = false;
+    uint32_t now_ms = millis();
     int32_t  raw;
-    int16_t  value;
-    int      i;
 
     reading->valid = false;
 
@@ -85,25 +77,15 @@ void psu_temperature_read(psu_temperature_reading_t *reading)
     }
     g_temp_converting = false;
 
-    for (i = 0; i < DS18B20_COUNT; i++) {
-        raw = g_temp_sensor.getTemp(g_temp_addr[i]);
+    raw = g_temp_sensor.getTemp(g_temp_addr);
 
-        /* disconnected, CRC error, or power-on value (85 degC still ends in shutdown) */
-        if (raw == DEVICE_DISCONNECTED_RAW || raw == DS18B20_POWER_ON_RAW) {
-            any_bad = true;
-        }
-        else {
-            any_good = true;
-            value    = (int16_t)(raw / 8);   /* 1/128 degC to 1/16 degC */
-            if (value > hottest) {
-                hottest = value;
-            }
-        }
+    /* disconnected, CRC error, or power-on value (85 degC still ends in shutdown) */
+    if (raw == DEVICE_DISCONNECTED_RAW || raw == DS18B20_POWER_ON_RAW) {
+        reading->error = true;
+        return;
     }
 
-    reading->error = any_bad;
-    if (any_good) {
-        reading->temperature = hottest;
-        reading->valid       = true;
-    }
+    reading->temperature = (int16_t)(raw / 8);   /* 1/128 degC to 1/16 degC */
+    reading->valid       = true;
+    reading->error       = false;
 }
