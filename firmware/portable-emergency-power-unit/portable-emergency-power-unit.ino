@@ -14,6 +14,7 @@
 #include "psu_display.h"
 #include "psu_event_log.h"
 #include "psu_mcu_heartbeat.h"
+#include "psu_mcu_status.h"
 #include "psu_fpga_heartbeat.h"
 #include "psu_power_switch.h"
 #include "psu_fpga_fault.h"
@@ -171,6 +172,7 @@ static void control_task(void *param)
     psu_event_log_init(&g_event_log);
     psu_display_status_init(&g_display_status);
     psu_mcu_heartbeat_init();
+    psu_mcu_status_init();
     psu_fpga_heartbeat_init();
     psu_power_switch_init();
     psu_fpga_fault_init();
@@ -249,6 +251,7 @@ static void control_update(void)
 
     /* FSM -> FPGA, heartbeat stops if this task stops */
     psu_mcu_heartbeat_update(g_fsm.out.mcu_heartbeat);
+    psu_mcu_status_update(g_fsm.out.boot_success, g_fsm.out.shutdown_success);
 
     /* new BOOT attempt, the sensor task runs the main system init once for it */
     if (g_fsm.state == FSM_STATE_BOOT && previous_state != FSM_STATE_BOOT) {

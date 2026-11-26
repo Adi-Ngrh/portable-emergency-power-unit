@@ -16,8 +16,8 @@
 /* ==================== TFT (MSP2807, ILI9341) ==================== */
 
 #define TFT_SCK_PIN     18     /* VSPI SCK */
-#define TFT_MOSI_PIN    23     /* VSPI MOSI, module SDI */
-#define TFT_MISO_PIN    19     /* VSPI MISO, module SDO, not read by the firmware */
+#define TFT_MOSI_PIN    14     /* MOSI, module SDI (GPIO23 is used elsewhere) */
+#define TFT_MISO_PIN    -1     /* not connected, the firmware never reads the display */
 #define TFT_CS_PIN      5      /* VSPI SS */
 #define TFT_DC_PIN      16
 #define TFT_RST_PIN     17
@@ -30,6 +30,8 @@
 #define FPGA_FAULT_BIT0_PIN 35 /* input from FPGA fault_code_bus[0], input-only pin */
 #define FPGA_FAULT_BIT1_PIN 36 /* input from FPGA fault_code_bus[1], input-only pin (VP) */
 #define FPGA_FAULT_BIT2_PIN 39 /* input from FPGA fault_code_bus[2], input-only pin (VN) */
+#define BOOT_SUCCESS_PIN     2 /* output to FPGA boot_success, also lights the on-board LED */
+#define SHUTDOWN_SUCCESS_PIN 15 /* output to FPGA shutdown_success */
 
 /* ==================== I2C BUS ==================== */
 

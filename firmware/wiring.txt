@@ -6,10 +6,10 @@ GND        -> GND
 CS         -> GPIO5
 RESET      -> GPIO17 (TX2)
 DC         -> GPIO16 (RX2)
-SDI (MOSI) -> GPIO23
+SDI (MOSI) -> GPIO14
 SCK        -> GPIO18
 LED        -> GPIO32
-SDO (MISO) -> GPIO19
+SDO (MISO) -> not connected
 T_CLK, T_CS, T_DIN, T_DO, T_IRQ -> not connected
 
 INA226
@@ -31,6 +31,8 @@ pin 10     -> GPIO34 (fpga_heartbeat)
 pin 47     -> GPIO35 (fault_code_bus[0])
 pin 48     -> GPIO36 / VP (fault_code_bus[1])
 pin 1      -> GPIO39 / VN (fault_code_bus[2])
+pin 41     -> GPIO2 (boot_success)
+pin 40     -> GPIO15 (shutdown_success)
 
 POWER SWITCH (ROCKER)
 SIGNAL     -> GPIO33 and FPGA pin 39 (high = ON)
