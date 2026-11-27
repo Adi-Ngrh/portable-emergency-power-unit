@@ -33,16 +33,16 @@ typedef enum
 /* FEE inputs */
 typedef struct
 {
-    bool    overcurrent;
-    bool    overvoltage;
-    bool    undervoltage;
+    int32_t voltage_mv;             /* INA226 bus voltage = battery voltage, mV */
+    int32_t current_ma;             /* INA226 current, mA, sign depends on direction */
+    bool    power_valid;            /* new voltage/current reading this update */
     int16_t temperature;            /* 1 LSB = 1/16 degC */
     bool    temperature_valid;      /* new reading this update */
     bool    temperature_error;      /* temperature reader problem */
     bool    fan_failure;
     bool    sensor_failure;
     bool    communication_timeout;
-    bool    critical_clear;         /* from FSM */
+    bool    critical_clear;         /* always false: no retry out of CRITICAL */
 } psu_fee_inputs_t;
 
 /* FEE outputs */
@@ -66,12 +66,21 @@ typedef struct
 /* FEE state */
 typedef struct
 {
-    psu_fee_debounce_t overcurrent;
-    psu_fee_debounce_t overvoltage;
-    psu_fee_debounce_t undervoltage;
     psu_fee_debounce_t fan_failure;
     psu_fee_debounce_t sensor_failure;
     psu_fee_debounce_t communication_timeout;
+
+    bool               overvoltage_over_limit;      /* comparator result */
+    uint8_t            overvoltage_count;           /* consecutive readings over the limit */
+    bool               overvoltage_valid;           /* overvoltage confirmed */
+
+    bool               undervoltage_under_limit;    /* comparator result */
+    uint8_t            undervoltage_count;          /* consecutive readings under the limit */
+    bool               undervoltage_valid;          /* undervoltage confirmed */
+
+    bool               overcurrent_over_limit;      /* comparator result */
+    uint8_t            overcurrent_count;           /* consecutive readings over the limit */
+    bool               overcurrent_valid;           /* overcurrent confirmed */
 
     bool               overtemperature_over_limit;  /* comparator result */
     uint8_t            overtemperature_count;       /* consecutive hot readings */

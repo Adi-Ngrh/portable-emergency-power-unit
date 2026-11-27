@@ -15,7 +15,7 @@ bool psu_board_init(void)
         ok = false;
     }
 
-    /* temperature sensors */
+    /* temperature sensor */
     if (!psu_temperature_sensor_init()) {
         ok = false;
     }

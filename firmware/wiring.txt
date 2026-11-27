@@ -5,9 +5,9 @@ VCC        -> VIN (5V)
 GND        -> GND
 CS         -> GPIO5
 RESET      -> GPIO17 (TX2)
-DC         -> GPIO16 (RX2)
+DC         -> GPIO16 (RX2) note : change this
 SDI (MOSI) -> GPIO14
-SCK        -> GPIO18
+SCK        -> GPIO18 note : change this
 LED        -> GPIO32
 SDO (MISO) -> not connected
 T_CLK, T_CS, T_DIN, T_DO, T_IRQ -> not connected
@@ -35,5 +35,6 @@ pin 41     -> GPIO2 (boot_success)
 pin 40     -> GPIO15 (shutdown_success)
 
 POWER SWITCH (ROCKER)
-SIGNAL     -> GPIO33 and FPGA pin 39 (high = ON) 
-note : change GPIO33 to something else, the solder cause it to short.
+not connected to any ESP32 or FPGA pin, it switches the power of the whole unit
+
+battery > rocker switch > esp & main system

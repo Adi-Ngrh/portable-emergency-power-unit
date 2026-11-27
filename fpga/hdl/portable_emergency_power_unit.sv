@@ -2,7 +2,8 @@
 
 // top level: FSM, FEE, sensor readers and FPGA heartbeat wired together internally
 module portable_emergency_power_unit #(
-    parameter CLK_FREQ_HZ = 27_000_000   // 27 MHz internal clock (tang nano 4k), 50 MHz external clock preferred
+    parameter CLK_FREQ_HZ = 27_000_000,  // 27 MHz internal clock (tang nano 4k), 50 MHz external clock preferred
+    parameter DEBUG_MODE  = 0            // 1 = run without the MCU (testing only), keep 0 in the final build
 )(
     input  logic clk,
     input  logic reset_n,
@@ -12,7 +13,6 @@ module portable_emergency_power_unit #(
     input  logic mcu_heartbeat,
     input  logic battery_low,
     input  logic battery_critical,
-    input  logic manual_power,
     input  logic manual_shutdown,
     input  logic shutdown_success,
 
@@ -23,10 +23,9 @@ module portable_emergency_power_unit #(
     output logic critical_led,    // on in CRITICAL
     output logic buzzer_alert,
     output logic recovery_mode,
-    //output logic [6:0] state_debug_bus,
 
     // heartbeat output to the MCU
-    output logic fpga_heartbeat,  // toggles every 250 ms while the FPGA runs, MCU blocks BOOT without it
+    output logic fpga_heartbeat,  // toggles every 250 ms while the FPGA runs, the MCU only boots once it sees it
 
     // FEE inputs
     inout  wire  ina226_scl,  // INA226 voltage/current sensor I2C clock pin (open-drain)
@@ -47,9 +46,6 @@ module portable_emergency_power_unit #(
     // current resolution shared by ina226_reader and the FEE (microampere per bit), both must use the same value
     localparam INA226_CURRENT_LSB_UA = 1000;
 
-    // internal net: FSM critical_clear -> FEE critical_clear
-    logic fsm_critical_clear;
-
     // internal nets: INA226 reader -> FEE
     logic [15:0] bus_voltage;         // 1 LSB = 1.25 mV
     logic signed [15:0] current;      // 1 LSB = INA226_CURRENT_LSB_UA microampere
@@ -61,11 +57,10 @@ module portable_emergency_power_unit #(
     logic temperature_valid;
     logic temperature_error;
 
-    // ==========================================
-    // FSM (Power-State Machine) Instance
-    // ==========================================
+    // ==================== FSM (power-state machine) instance ====================
     power_state_machine #(
-    .CLK_FREQ_HZ (CLK_FREQ_HZ)
+    .CLK_FREQ_HZ (CLK_FREQ_HZ),
+    .DEBUG_MODE  (DEBUG_MODE)
     ) u_fsm (
         .clk               (clk),
         .reset_n           (reset_n),
@@ -76,7 +71,6 @@ module portable_emergency_power_unit #(
         .warning_request   (warning_response), // FEE warning -> FSM
         .shutdown_request  (shutdown_response), // FEE shutdown -> FSM
         .critical_request  (critical_response), // FEE latch -> FSM
-        .manual_power      (manual_power),
         .manual_shutdown   (manual_shutdown),
         .shutdown_success  (shutdown_success),
 
@@ -84,15 +78,11 @@ module portable_emergency_power_unit #(
         .normal_led        (normal_led),
         .warning_led       (warning_led),
         .critical_led      (critical_led),
-        .critical_clear    (fsm_critical_clear),
         .buzzer_alert      (buzzer_alert),
         .recovery_mode     (recovery_mode)
-        //.state_debug_bus   (state_debug_bus)
     );
 
-    // ==========================================
-    // FPGA Heartbeat Instance (proof of life for the MCU)
-    // ==========================================
+    // ==================== FPGA heartbeat instance (proof of life for the MCU) ====================
     fpga_heartbeat #(
     .CLK_FREQ_HZ (CLK_FREQ_HZ)
     ) u_heartbeat (
@@ -102,9 +92,7 @@ module portable_emergency_power_unit #(
         .heartbeat         (fpga_heartbeat)
     );
 
-    // ==========================================
-    // DS18B20 Temperature Reader Instance
-    // ==========================================
+    // ==================== DS18B20 temperature reader instance ====================
     ds18b20_reader #(
     .CLK_FREQ_HZ (CLK_FREQ_HZ)
     ) u_ds18b20 (
@@ -117,9 +105,7 @@ module portable_emergency_power_unit #(
         .temperature_error (temperature_error)
     );
 
-    // ==========================================
-    // INA226 Voltage/Current Reader Instance
-    // ==========================================
+    // ==================== INA226 voltage/current reader instance ====================
     ina226_reader #(
     .CLK_FREQ_HZ    (CLK_FREQ_HZ),
     .CURRENT_LSB_UA (INA226_CURRENT_LSB_UA)
@@ -135,9 +121,7 @@ module portable_emergency_power_unit #(
         .measurement_error (measurement_error)
     );
 
-    // ==========================================
-    // FEE (Fault Event Engine) Instance
-    // ==========================================
+    // ==================== FEE (fault event engine) instance ====================
     fault_event_engine #(
     .CLK_FREQ_HZ    (CLK_FREQ_HZ),
     .CURRENT_LSB_UA (INA226_CURRENT_LSB_UA)
@@ -154,7 +138,7 @@ module portable_emergency_power_unit #(
         .fan_failure           (fan_failure),
         .sensor_failure        (sensor_failure),
         .communication_timeout (communication_timeout),
-        .critical_clear        (fsm_critical_clear), // FSM retry pulse -> FEE latch clear
+        .critical_clear        (1'b0),              // no retry out of CRITICAL, the critical latch is never cleared
 
         .shutdown_response     (shutdown_response),
         .warning_response      (warning_response),

@@ -23,9 +23,9 @@ int8_t psu_battery_percent(int32_t voltage_mv)
         return 100;
     }
 
-    /* position inside the range, rounded to the nearest percent */
+    /* position inside the range in percent */
     above_empty_mv = voltage_mv - BATTERY_EMPTY_MV;
-    percent        = (above_empty_mv * 100L + range_mv / 2L) / range_mv;
+    percent        = above_empty_mv * 100L / range_mv;
 
     return (int8_t)percent;
 }

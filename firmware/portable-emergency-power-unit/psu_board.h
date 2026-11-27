@@ -11,7 +11,6 @@
 #define RELAY_A_PIN     25     /* charge path: grid - charger - relay A - battery */
 #define RELAY_B_PIN     27     /* discharge path: BMS - relay B - inverter & USB-C */
 #define FAN_PIN         26     /* 12 V fan MOSFET */
-#define POWER_SWITCH_PIN 33    /* rocker switch to manual_power, high = ON */
 
 /* ==================== TFT (MSP2807, ILI9341) ==================== */
 

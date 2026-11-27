@@ -27,6 +27,7 @@ typedef struct
 {
     psu_fsm_state_t      state;
     psu_fee_code_t       fault_code;        /* highest active fault */
+    bool                 debug_mode;        /* MCU runs without the FPGA, see DEBUG_MODE in the .ino */
     bool                 fpga_alive;        /* FPGA heartbeat seen, fpga_fault_code is valid */
     psu_fee_code_t       fpga_fault_code;   /* highest active fault on the FPGA */
     int8_t               battery_percent;   /* 0 to 100, -1 = unknown */

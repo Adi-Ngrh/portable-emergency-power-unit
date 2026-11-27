@@ -3,12 +3,12 @@ module fault_event_engine #(
     parameter OVERTEMP_SET_C   = 60,  // overtemperature trips at or above this temperature (°C)
     parameter OVERTEMP_CLEAR_C = 55,  // overtemperature releases below this temperature (°C), must be lower than OVERTEMP_SET_C
     parameter OVERTEMP_READING_COUNT = 3,  // consecutive readings above the limit before overtemperature is reported (1 to 255)
-    parameter OVERVOLTAGE_SET_MV    = 14_600,  // overvoltage trips at or above this bus voltage (mV), placeholder, must match the battery
-    parameter OVERVOLTAGE_CLEAR_MV  = 14_200,  // overvoltage releases below this bus voltage (mV), must be lower than OVERVOLTAGE_SET_MV
-    parameter UNDERVOLTAGE_SET_MV   = 10_500,  // undervoltage trips at or below this bus voltage (mV), placeholder, must match the battery
-    parameter UNDERVOLTAGE_CLEAR_MV = 11_000,  // undervoltage releases above this bus voltage (mV), must be higher than UNDERVOLTAGE_SET_MV
-    parameter OVERCURRENT_SET_MA    = 5_000,   // overcurrent trips at or above this current in either direction (mA), placeholder
-    parameter OVERCURRENT_CLEAR_MA  = 4_500,   // overcurrent releases below this current (mA), must be lower than OVERCURRENT_SET_MA
+    parameter OVERVOLTAGE_SET_MV    = 14_800,  // overvoltage trips at or above this bus voltage (mV), above the 14.6 V LiFePO4 charging voltage
+    parameter OVERVOLTAGE_CLEAR_MV  = 14_400,  // overvoltage releases below this bus voltage (mV), must be lower than OVERVOLTAGE_SET_MV
+    parameter UNDERVOLTAGE_SET_MV   = 11_600,  // undervoltage trips at or below this bus voltage (mV), battery empty (4 x 2.9 V)
+    parameter UNDERVOLTAGE_CLEAR_MV = 12_000,  // undervoltage releases above this bus voltage (mV), must be higher than UNDERVOLTAGE_SET_MV
+    parameter OVERCURRENT_SET_MA    = 20_000,  // overcurrent trips at or above this current in either direction (mA), GUESS: confirm with the team
+    parameter OVERCURRENT_CLEAR_MA  = 18_000,  // overcurrent releases below this current (mA), must be lower than OVERCURRENT_SET_MA
     parameter CURRENT_LSB_UA        = 1000,    // current resolution of ina226_reader (microampere per bit), must match ina226_reader
     parameter INA226_READING_COUNT  = 3        // consecutive INA226 readings beyond a limit before a voltage/current fault is reported (1 to 255)
 )(

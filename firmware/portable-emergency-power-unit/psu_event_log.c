@@ -66,6 +66,7 @@ static void event_log_fault_change(psu_event_log_t *log, uint32_t now_ms, const 
 
 /**
  * @brief Log MCU FSM state changes and MCU FEE fault code changes.
+ *        Entering CRITICAL or OFF also logs "TURN OFF POWER SWITCH".
  * @param[in,out] log Event log.
  * @param now_ms      Current uptime in ms.
  * @param state       Current FSM state.
@@ -86,6 +87,14 @@ void psu_event_log_track(psu_event_log_t *log, uint32_t now_ms,
                  psu_event_log_state_name(log->last_state), psu_event_log_state_name(state));
         psu_event_log_add(log, now_ms, EVENT_LEVEL_INFO, text);
         log->last_state = state;
+
+        /* CRITICAL and OFF are final, only the power switch can turn the unit off (charging included) */
+        if (state == FSM_STATE_CRITICAL) {
+            psu_event_log_add(log, now_ms, EVENT_LEVEL_CRITICAL, "TURN OFF POWER SWITCH");
+        }
+        else if (state == FSM_STATE_OFF) {
+            psu_event_log_add(log, now_ms, EVENT_LEVEL_WARNING, "TURN OFF POWER SWITCH");
+        }
     }
 }
 

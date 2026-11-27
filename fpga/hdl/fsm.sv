@@ -1,5 +1,6 @@
 module power_state_machine #(
-    parameter CLK_FREQ_HZ
+    parameter CLK_FREQ_HZ,
+    parameter DEBUG_MODE = 0  // 1 = run without the MCU (testing only), keep 0 in the final build
 )(
 	input logic boot_success,
 	input logic mcu_heartbeat,
@@ -8,7 +9,6 @@ module power_state_machine #(
 	input logic warning_request,
 	input logic shutdown_request,
 	input logic critical_request,
-	input logic manual_power,
 	input logic manual_shutdown,
 	input logic shutdown_success,
 	input logic reset_n,
@@ -18,10 +18,8 @@ module power_state_machine #(
 	output logic normal_led,   // NORMAL
 	output logic warning_led,  // WARNING, SHUTDOWN, RECOVERY
 	output logic critical_led, // CRITICAL
-	output logic critical_clear,
 	output logic buzzer_alert,
 	output logic recovery_mode
-	//output logic [6:0] state_debug_bus
 );
 
 // variable to store states (one-hot encoded)
@@ -37,8 +35,6 @@ typedef enum logic [6:0]
 } state_e;
 state_e current_state;
 state_e next_state;
-logic [6:0] state_debug_bus;
-state_e state_debug_bus_next;
 
 
 // synchronizer registers
@@ -48,7 +44,6 @@ logic battery_critical_raw, battery_critical_sync;
 logic warning_request_raw, warning_request_sync;
 logic shutdown_request_raw, shutdown_request_sync;
 logic critical_request_raw, critical_request_sync;
-logic manual_power_raw, manual_power_sync, manual_power_sync_prev;
 logic manual_shutdown_raw, manual_shutdown_sync;
 logic mcu_heartbeat_raw, mcu_heartbeat_sync, mcu_heartbeat_sync_prev;
 logic shutdown_success_raw, shutdown_success_sync;
@@ -64,33 +59,26 @@ localparam logic [28:0] shutdown_timeout = CLK_FREQ_HZ * 10;
 // heartbeat watchdog: counts cycles since the last mcu_heartbeat toggle
 logic [28:0] heartbeat_counter;
 logic heartbeat_timeout;
-localparam logic [28:0] heartbeat_timeout_threshold = CLK_FREQ_HZ * 3; // placeholder ~3s @ 50MHz, set from real MCU heartbeat rate
+localparam logic [28:0] heartbeat_timeout_threshold = CLK_FREQ_HZ * 3; // 3 s at any clock, the MCU toggles every 250 ms
 
 // temporary outputs registers
 logic system_enable_next;
 logic normal_led_next;   // status LEDs: at most one is on, none in STATE_OFF and STATE_BOOT
 logic warning_led_next;
 logic critical_led_next;
-logic critical_clear_next;
 logic buzzer_alert_next;
 logic recovery_mode_next;
 
 logic battery_fault_latch; // mark shutdown caused by battery
-logic manual_power_pressed; // when boot fail, keep system at STATE_OFF state until fresh trigger
+logic booted_once; // left STATE_OFF once since power-on, STATE_OFF is final after that
 logic shutdown_trigger;
 logic warning_trigger;
 logic critical_trigger;
-logic critical_retry_allowed; // gate for leaving STATE_CRITICAL: a retry was asked for and the budget isn't spent
-logic [1:0] retry_count; // consecutive retries out of STATE_CRITICAL; only reset_n clears this
-localparam logic [1:0] max_retry = 2'd3;
 logic heartbeat_edge; // any toggle on mcu_heartbeat = proof the MCU is alive and running
-logic mcu_alive; // set once a heartbeat is seen; only cleared in STATE_OFF
 
-assign manual_power_pressed = manual_power_sync & ~manual_power_sync_prev;
 assign shutdown_trigger = manual_shutdown_sync || shutdown_request_sync || battery_critical_sync;
 assign warning_trigger = warning_request_sync || battery_low_sync;
 assign critical_trigger = critical_request_sync;
-assign critical_retry_allowed = manual_power_pressed && (retry_count < max_retry);
 assign heartbeat_edge = mcu_heartbeat_sync ^ mcu_heartbeat_sync_prev;
 
 
@@ -112,9 +100,6 @@ always_ff @(posedge clk or negedge reset_n) begin
 		shutdown_request_sync <= 1'b0;
 		critical_request_raw <= 1'b0;
 		critical_request_sync <= 1'b0;
-		manual_power_raw <= 1'b0;
-		manual_power_sync <= 1'b0;
-		manual_power_sync_prev <= 1'b0;
 		manual_shutdown_raw <= 1'b0;
 		manual_shutdown_sync <= 1'b0;
 		mcu_heartbeat_raw <= 1'b0;
@@ -131,7 +116,6 @@ always_ff @(posedge clk or negedge reset_n) begin
 		warning_request_raw <= warning_request;
 		shutdown_request_raw <= shutdown_request;
 		critical_request_raw <= critical_request;
-		manual_power_raw <= manual_power;
 		manual_shutdown_raw <= manual_shutdown;
 		mcu_heartbeat_raw <= mcu_heartbeat;
 		shutdown_success_raw <= shutdown_success;
@@ -143,13 +127,11 @@ always_ff @(posedge clk or negedge reset_n) begin
 		warning_request_sync <= warning_request_raw;
 		shutdown_request_sync <= shutdown_request_raw;
 		critical_request_sync <= critical_request_raw;
-		manual_power_sync <= manual_power_raw;
 		manual_shutdown_sync <= manual_shutdown_raw;
 		mcu_heartbeat_sync <= mcu_heartbeat_raw;
 		shutdown_success_sync <= shutdown_success_raw;
 
-		// record previous manual_power/mcu_heartbeat signal
-		manual_power_sync_prev <= manual_power_sync;
+		// record previous mcu_heartbeat signal
 		mcu_heartbeat_sync_prev <= mcu_heartbeat_sync;
 	end
 end
@@ -183,8 +165,7 @@ always_ff @(posedge clk or negedge reset_n) begin
 		heartbeat_counter <= 29'b0;
 		heartbeat_timeout <= 1'b0;
 	end
-	else if (heartbeat_edge || (current_state == STATE_CRITICAL && next_state == STATE_BOOT)) begin
-		// also clear on a STATE_CRITICAL retry
+	else if (heartbeat_edge) begin
 		heartbeat_counter <= 29'b0;
 		heartbeat_timeout <= 1'b0;
 	end
@@ -210,30 +191,27 @@ always_comb begin
 	normal_led_next = 1'b0;
 	warning_led_next = 1'b0;
 	critical_led_next = 1'b0;
-	critical_clear_next = 1'b0;
 	buzzer_alert_next = 1'b0;
 	recovery_mode_next = 1'b0;
-	state_debug_bus_next = current_state;
 
 	// state evaluation
 	case (current_state)
             
-		// STATE_OFF: Device is off.
-		// Transitions to STATE_BOOT when the power button is manually pressed.
+		// STATE_OFF: after power-on go to STATE_BOOT once on the first MCU heartbeat (DEBUG_MODE: at once), then final
 		STATE_OFF: begin
-			if (manual_power_pressed) begin
-				next_state = STATE_BOOT;
+			if (!booted_once) begin
+				if (DEBUG_MODE == 1 || heartbeat_edge) begin
+					next_state = STATE_BOOT;
+				end
 			end
 		end
 
-		// STATE_BOOT: Device is starting up.
-		// Transitions to STATE_NORMAL once boot_success arrives.
-		// Transitions back to STATE_OFF if the boot timeout expires.
+		// STATE_BOOT: the MCU has 10 s to send boot_success (DEBUG_MODE: not needed), else back to STATE_OFF
 		STATE_BOOT: begin
 			system_enable_next = 1'b1;
 			timer_threshold = boot_timeout;
 			timer_start = 1'b1;
-			if (mcu_alive && boot_success_sync) begin
+			if (DEBUG_MODE == 1 || boot_success_sync) begin
 				next_state = STATE_NORMAL;
 			end
 			else if (timer_finish) begin
@@ -241,17 +219,13 @@ always_comb begin
 			end
 		end
 
-		// STATE_NORMAL: Device is fully operational.
-		// See the global overrides below for transitions to STATE_CRITICAL,
-		// STATE_SHUTDOWN, STATE_RECOVERY, or STATE_WARNING.
+		// STATE_NORMAL: fully running, leaves only through the global overrides below
 		STATE_NORMAL: begin
 			system_enable_next = 1'b1;	
 			normal_led_next    = 1'b1;
 		end
 
-		// STATE_WARNING: Non-immediate issue exists.
-		// Transitions to STATE_CRITICAL if faults escalate.
-		// Transitions back to STATE_NORMAL if all warnings clear.
+		// STATE_WARNING: running with a non-urgent fault, back to STATE_NORMAL when all warnings clear
 		STATE_WARNING: begin
 			system_enable_next = 1'b1;
 			warning_led_next   = 1'b1;
@@ -260,19 +234,13 @@ always_comb begin
 			end
 		end
 
-		// STATE_CRITICAL: Immediate danger. System block turned off, alarm asserted.
-		// Transitions to STATE_BOOT when the user retries and the retry budget isn't spent.
+		// STATE_CRITICAL: system off, alarm on, final until the power switch is turned off and on again
 		STATE_CRITICAL: begin
 			critical_led_next  = 1'b1;
 			buzzer_alert_next  = 1'b1;
-			if (critical_retry_allowed) begin
-				critical_clear_next = 1'b1;
-				next_state = STATE_BOOT;
-			end
 		end
 
-		// STATE_SHUTDOWN: Graceful process of turning off.
-		// Transitions to STATE_RECOVERY or STATE_OFF once shutdown completes.
+		// STATE_SHUTDOWN: wait for shutdown_success or the 10 s timeout, then STATE_RECOVERY (battery) or STATE_OFF
 		STATE_SHUTDOWN: begin
 			system_enable_next = 1'b1;
 			warning_led_next   = 1'b1;
@@ -295,8 +263,7 @@ always_comb begin
 			end
 		end
 
-		// STATE_RECOVERY: Battery critical, system block already off.
-		// Transitions to STATE_BOOT once battery_critical clears.
+		// STATE_RECOVERY: battery critical, system off, back to STATE_BOOT when battery_critical clears
 		STATE_RECOVERY: begin
 			recovery_mode_next = 1'b1;
 			warning_led_next   = 1'b1;
@@ -312,7 +279,8 @@ always_comb begin
 	endcase
 	
 	
-	if (mcu_alive && heartbeat_timeout && current_state != STATE_OFF && current_state != STATE_CRITICAL) begin
+	// MCU heartbeat lost: checked in every state except STATE_OFF, not checked in DEBUG_MODE (no MCU)
+	if (DEBUG_MODE == 0 && heartbeat_timeout && current_state != STATE_OFF && current_state != STATE_CRITICAL) begin
 		next_state = STATE_CRITICAL;
 	end
 	else if (critical_trigger && (current_state == STATE_NORMAL || current_state == STATE_WARNING || current_state == STATE_BOOT || current_state == STATE_SHUTDOWN)) begin
@@ -335,8 +303,7 @@ always_ff @(posedge clk or negedge reset_n) begin
 	// reset button bypass other logics (active-low)
 	if (!reset_n) begin
 		battery_fault_latch <= 1'b0;
-		retry_count <= 2'd0;
-		mcu_alive <= 1'b0;
+		booted_once <= 1'b0;
 		current_state <= STATE_OFF;
 	end else begin
 		current_state <= next_state;
@@ -348,16 +315,9 @@ always_ff @(posedge clk or negedge reset_n) begin
 			battery_fault_latch <= 1'b0;
 		end
 
-		// count retries out of STATE_CRITICAL; only reset_n clears this counter
-		if (current_state == STATE_CRITICAL && next_state == STATE_BOOT) begin
-			retry_count <= retry_count + 1'b1;
-		end
-
-		// track MCU heartbeat
-		if (current_state == STATE_OFF || (current_state == STATE_CRITICAL && next_state == STATE_BOOT)) begin
-			mcu_alive <= 1'b0;
-		end else if (heartbeat_edge) begin
-			mcu_alive <= 1'b1;
+		// remember the first boot since power-on, STATE_OFF is final after it
+		if (next_state == STATE_BOOT) begin
+			booted_once <= 1'b1;
 		end
 	end
 end
@@ -373,19 +333,15 @@ always_ff @(posedge clk or negedge reset_n) begin
 		normal_led      <= 1'b0;
 		warning_led     <= 1'b0;
 		critical_led    <= 1'b0;
-		critical_clear <= 1'b0;
 		buzzer_alert    <= 1'b0;
 		recovery_mode   <= 1'b0;
-		state_debug_bus <= STATE_OFF;
 	end else begin
 		system_enable   <= system_enable_next;
 		normal_led      <= normal_led_next;
 		warning_led     <= warning_led_next;
 		critical_led    <= critical_led_next;
-		critical_clear <= critical_clear_next;
 		buzzer_alert    <= buzzer_alert_next;
 		recovery_mode   <= recovery_mode_next;
-		state_debug_bus <= state_debug_bus_next;
 	end
 end
 

@@ -16,9 +16,13 @@
 #include "psu_mcu_heartbeat.h"
 #include "psu_mcu_status.h"
 #include "psu_fpga_heartbeat.h"
-#include "psu_power_switch.h"
 #include "psu_fpga_fault.h"
 #include "psu_battery.h"
+
+/* ==================== DEBUG MODE ==================== */
+
+/* 1 = test the MCU without the FPGA (FPGA counts as alive, its pins are not read), keep 0 in the final build */
+#define DEBUG_MODE                 1
 
 /* ==================== TASK SETTINGS ==================== */
 
@@ -41,7 +45,6 @@
 #define DISPLAY_WAIT_MS            100   /* longest wait for a reading, screen keeps updating */
 
 /* queue lengths */
-#define BOOT_RESULT_QUEUE_LEN      2
 #define CONTROL_READINGS_QUEUE_LEN 4     /* control takes one every 1 ms, sensor sends one every ~10 ms */
 #define DISPLAY_READINGS_QUEUE_LEN 32    /* holds readings while a slow redraw runs */
 
@@ -54,20 +57,6 @@ typedef struct
     psu_temperature_reading_t temperature;
 } psu_sensor_readings_t;
 
-/* orders for the sensor task, control task -> sensor task */
-typedef struct
-{
-    bool     read_enabled;   /* main system is up, read the sensors */
-    uint32_t boot_attempt;   /* changes on every BOOT entry, run the main system init once */
-} psu_sensor_command_t;
-
-/* main system init result, sensor task -> control task */
-typedef struct
-{
-    uint32_t boot_attempt;   /* BOOT attempt this result belongs to */
-    bool     passed;         /* every sensor responded */
-} psu_boot_result_t;
-
 /* status and event log, control task -> display task */
 typedef struct
 {
@@ -77,11 +66,14 @@ typedef struct
 
 /* ==================== QUEUES ==================== */
 
-/* sensor command mailbox (newest only), handle type from FreeRTOS queue.h */
-static QueueHandle_t g_sensor_command_queue = NULL;
+/* "start the sensors" request on each BOOT, control task -> sensor task, handle type from FreeRTOS queue.h */
+static QueueHandle_t g_boot_request_queue = NULL;
 
-/* boot result queue, handle type from FreeRTOS queue.h */
-static QueueHandle_t g_boot_result_queue = NULL;
+/* answer to that request (true = every sensor responded), sensor task -> control task */
+static QueueHandle_t g_boot_answer_queue = NULL;
+
+/* "read the sensors" mailbox (newest only, true while the main system is up), control task -> sensor task */
+static QueueHandle_t g_sensor_read_queue = NULL;
 
 /* readings queue for the control task, handle type from FreeRTOS queue.h */
 static QueueHandle_t g_control_readings_queue = NULL;
@@ -104,8 +96,9 @@ static void display_task(void *param);
 void setup()
 {
     /* queues first, a task can run as soon as it is created */
-    g_sensor_command_queue   = xQueueCreate(1, sizeof(psu_sensor_command_t));
-    g_boot_result_queue      = xQueueCreate(BOOT_RESULT_QUEUE_LEN, sizeof(psu_boot_result_t));
+    g_boot_request_queue     = xQueueCreate(1, sizeof(bool));
+    g_boot_answer_queue      = xQueueCreate(1, sizeof(bool));
+    g_sensor_read_queue      = xQueueCreate(1, sizeof(bool));
     g_control_readings_queue = xQueueCreate(CONTROL_READINGS_QUEUE_LEN, sizeof(psu_sensor_readings_t));
     g_display_readings_queue = xQueueCreate(DISPLAY_READINGS_QUEUE_LEN, sizeof(psu_sensor_readings_t));
     g_status_report_queue    = xQueueCreate(1, sizeof(psu_status_report_t));
@@ -147,14 +140,8 @@ static psu_event_log_t g_event_log;
 /* status shown on screen, struct from psu_display.h */
 static psu_display_status_t g_display_status;
 
-/* orders sent to the sensor task, struct defined above */
-static psu_sensor_command_t g_sensor_command;
-
 /* status and log sent to the display task, struct defined above */
 static psu_status_report_t g_status_report;
-
-/* number of the current BOOT attempt, 0 = no BOOT yet */
-static uint32_t g_boot_attempt = 0;
 
 /**
  * @brief Control task: runs the FSM and FEE every CONTROL_TASK_PERIOD_MS.
@@ -173,9 +160,15 @@ static void control_task(void *param)
     psu_display_status_init(&g_display_status);
     psu_mcu_heartbeat_init();
     psu_mcu_status_init();
-    psu_fpga_heartbeat_init();
-    psu_power_switch_init();
-    psu_fpga_fault_init();
+
+    if (DEBUG_MODE) {
+        g_display_status.debug_mode = true;
+        psu_event_log_add(&g_event_log, millis(), EVENT_LEVEL_WARNING, "DEBUG MODE: NO FPGA");
+    }
+    else {
+        psu_fpga_heartbeat_init();
+        psu_fpga_fault_init();
+    }
 
     wake_tick = xTaskGetTickCount();
     for (;;) {
@@ -192,25 +185,23 @@ static void control_task(void *param)
 static void control_update(void)
 {
     /* FSM state enum from psu_fsm.h */
-    psu_fsm_state_t   previous_state = g_fsm.state;
-    /* boot result struct defined above */
-    psu_boot_result_t boot_result;
+    psu_fsm_state_t previous_state = g_fsm.state;
     /* fault code enum from psu_fee.h */
-    psu_fee_code_t    fpga_fault;
-    uint32_t          now_ms;
-    bool              main_system_up;
+    psu_fee_code_t  fpga_fault;
+    uint32_t        now_ms;
+    bool            boot_request = true;   /* the value is not used, the message itself is the request */
+    bool            boot_answer;
+    bool            main_system_up;
 
-    /* main system init result, a result of an older BOOT attempt is ignored */
+    /* answer from the sensor task: did every sensor start? */
     g_fsm_in.boot_passed = false;
     g_fsm_in.boot_failed = false;
-    if (xQueueReceive(g_boot_result_queue, &boot_result, 0) == pdTRUE) {
-        if (g_fsm.state == FSM_STATE_BOOT && boot_result.boot_attempt == g_boot_attempt) {
-            if (boot_result.passed) {
-                g_fsm_in.boot_passed = true;
-            }
-            else {
-                g_fsm_in.boot_failed = true;
-            }
+    if (xQueueReceive(g_boot_answer_queue, &boot_answer, 0) == pdTRUE) {
+        if (boot_answer) {
+            g_fsm_in.boot_passed = true;
+        }
+        else {
+            g_fsm_in.boot_failed = true;
         }
     }
 
@@ -220,25 +211,34 @@ static void control_update(void)
         g_control_readings.temperature.valid = false;
     }
 
-    /* FPGA heartbeat -> FSM, BOOT only while the FPGA safety monitor is alive */
-    g_fsm_in.fpga_alive = psu_fpga_heartbeat_update();
+    if (DEBUG_MODE) {
+        /* no FPGA: act as if it is alive and has no fault */
+        g_fsm_in.fpga_alive = true;
+        fpga_fault          = FEE_CODE_DEFAULT;
+    }
+    else {
+        /* FPGA heartbeat -> FSM, BOOT only while the FPGA safety monitor is alive */
+        g_fsm_in.fpga_alive = psu_fpga_heartbeat_update();
 
-    /* FPGA fault code, only shown and logged (the FPGA cuts power by itself) */
-    fpga_fault = psu_fpga_fault_update();
-
-    /* power switch -> FSM, the FSM acts on OFF -> ON only */
-    g_fsm_in.manual_power = psu_power_switch_update();
+        /* FPGA fault code, only shown and logged (the FPGA cuts power by itself) */
+        fpga_fault = psu_fpga_fault_update();
+    }
 
     /* main system shutdown: nothing to switch off yet, so it is done at once (replace with relay code) */
     g_fsm_in.shutdown_done = (g_fsm.state == FSM_STATE_SHUTDOWN);
+
+    /* voltage and current -> FEE */
+    g_fee_in.voltage_mv  = g_control_readings.power.voltage_mv;
+    g_fee_in.current_ma  = g_control_readings.power.current_ma;
+    g_fee_in.power_valid = g_control_readings.power.valid;
 
     /* temperature -> FEE */
     g_fee_in.temperature       = g_control_readings.temperature.temperature;
     g_fee_in.temperature_valid = g_control_readings.temperature.valid;
     g_fee_in.temperature_error = g_control_readings.temperature.error;
 
-    /* FSM -> FEE */
-    g_fee_in.critical_clear = g_fsm.out.critical_clear;
+    /* no retry out of CRITICAL, so a critical fault is never cleared (only by power off) */
+    g_fee_in.critical_clear = false;
 
     psu_fee_update(&g_fee, &g_fee_in);
 
@@ -249,18 +249,20 @@ static void control_update(void)
 
     psu_fsm_update(&g_fsm, &g_fsm_in);
 
-    /* FSM -> FPGA, heartbeat stops if this task stops */
-    psu_mcu_heartbeat_update(g_fsm.out.mcu_heartbeat);
+    /* heartbeat and status pins -> FPGA, the heartbeat stops if this task stops */
+    psu_mcu_heartbeat_update();
     psu_mcu_status_update(g_fsm.out.boot_success, g_fsm.out.shutdown_success);
 
-    /* new BOOT attempt, the sensor task runs the main system init once for it */
+    /* just entered BOOT: ask the sensor task to start the sensors */
     if (g_fsm.state == FSM_STATE_BOOT && previous_state != FSM_STATE_BOOT) {
-        g_boot_attempt++;
+        xQueueSend(g_boot_request_queue, &boot_request, 0);
     }
 
     /* FPGA changes, then MCU changes -> event log (cause is logged before the state change) */
     now_ms = millis();
-    psu_event_log_track_fpga(&g_event_log, now_ms, g_fsm_in.fpga_alive, fpga_fault);
+    if (!DEBUG_MODE) {
+        psu_event_log_track_fpga(&g_event_log, now_ms, g_fsm_in.fpga_alive, fpga_fault);
+    }
     psu_event_log_track(&g_event_log, now_ms, g_fsm.state, g_fee.out.fault_code);
 
     /* main system is up: sensors are read and the battery level is known */
@@ -282,10 +284,8 @@ static void control_update(void)
         g_display_status.battery_percent = psu_battery_percent(g_control_readings.power.voltage_mv);
     }
 
-    /* orders -> sensor task, sensors only while main system is up */
-    g_sensor_command.read_enabled = main_system_up;
-    g_sensor_command.boot_attempt = g_boot_attempt;
-    xQueueOverwrite(g_sensor_command_queue, &g_sensor_command);
+    /* sensors are read only while the main system is up */
+    xQueueOverwrite(g_sensor_read_queue, &main_system_up);
 
     /* status and log -> display task */
     g_status_report.status = g_display_status;
@@ -295,40 +295,33 @@ static void control_update(void)
 
 /* ==================== SENSOR TASK ==================== */
 
-/* orders received from the control task, struct defined above, starts zeroed (no reads, no BOOT) */
-static psu_sensor_command_t g_sensor_task_command;
-
 /* sensor readings, struct defined above, starts zeroed */
 static psu_sensor_readings_t g_sensor_readings;
 
-/* main system init result, struct defined above */
-static psu_boot_result_t g_boot_result;
-
-/* last BOOT attempt the main system init ran for */
-static uint32_t g_boot_attempt_done = 0;
-
 /**
- * @brief Sensor task: main system init on BOOT, sensor reads while the main system is up.
+ * @brief Sensor task: starts the sensors when asked (each BOOT), reads them while the main system is up.
  * @param param Unused task argument.
  */
 static void sensor_task(void *param)
 {
+    bool boot_request;
+    bool boot_answer;
+    bool read_enabled = false;
+
     (void)param;
 
     for (;;) {
-        /* newest orders from the control task, old ones kept if none yet */
-        xQueuePeek(g_sensor_command_queue, &g_sensor_task_command, 0);
-
-        /* main system init, once per BOOT attempt */
-        if (g_sensor_task_command.boot_attempt != g_boot_attempt_done) {
-            g_boot_result.boot_attempt = g_sensor_task_command.boot_attempt;
-            g_boot_result.passed       = psu_board_init();
-            g_boot_attempt_done        = g_sensor_task_command.boot_attempt;
-            xQueueSend(g_boot_result_queue, &g_boot_result, 0);
+        /* BOOT asked to start the sensors: start them once and answer */
+        if (xQueueReceive(g_boot_request_queue, &boot_request, 0) == pdTRUE) {
+            boot_answer = psu_board_init();
+            xQueueSend(g_boot_answer_queue, &boot_answer, 0);
         }
 
+        /* newest "read the sensors" order, the old one is kept if none yet */
+        xQueuePeek(g_sensor_read_queue, &read_enabled, 0);
+
         /* sensors only while main system is up */
-        if (g_sensor_task_command.read_enabled) {
+        if (read_enabled) {
             psu_power_read(&g_sensor_readings.power);
             psu_temperature_read(&g_sensor_readings.temperature);
         }

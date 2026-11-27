@@ -31,7 +31,6 @@ typedef struct
     bool warning_request;    /* from FEE */
     bool shutdown_request;   /* from FEE */
     bool critical_request;   /* from FEE */
-    bool manual_power;       /* power switch level, true = ON */
     bool manual_shutdown;
     bool fpga_alive;         /* FPGA heartbeat seen in the last 3 s, MCU only */
 } psu_fsm_inputs_t;
@@ -39,26 +38,17 @@ typedef struct
 /* FSM outputs */
 typedef struct
 {
-    bool system_enable;
-    bool normal_led;         /* NORMAL, same as fsm.sv */
-    bool warning_led;        /* WARNING, SHUTDOWN, RECOVERY */
-    bool critical_led;       /* CRITICAL */
-    bool critical_clear;     /* one-update pulse to FEE */
-    bool buzzer_alert;
-    bool recovery_mode;
+    bool system_enable;      /* main system on, for the relay code (not written yet) */
     bool boot_success;       /* to FPGA: main system is up */
     bool shutdown_success;   /* to FPGA: main system is off */
-    bool mcu_heartbeat;      /* to FPGA: toggles while FSM runs */
 } psu_fsm_outputs_t;
 
 /* FSM state */
 typedef struct
 {
     psu_fsm_state_t   state;
-    uint32_t          heartbeat_ms;         /* time of last heartbeat toggle */
-    bool              manual_power_prev;    /* for edge detection */
+    bool              booted_once;          /* left OFF once since power-on, OFF is final after that */
     bool              battery_fault_latch;  /* shutdown caused by battery */
-    uint8_t           retry_count;          /* cleared only by reset */
     psu_fsm_outputs_t out;
 } psu_fsm_t;
 

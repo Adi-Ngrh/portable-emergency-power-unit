@@ -123,11 +123,22 @@ static void display_format(char *text, size_t len, int32_t milli, int decimals, 
         scale = 100;
     }
 
-    magnitude = (milli < 0) ? -milli : milli;
-    units     = (magnitude + step / 2) / step;
+    /* size of the value, the sign is added back as text */
+    magnitude = milli;
+    if (magnitude < 0) {
+        magnitude = -magnitude;
+    }
+
+    /* shown digits, adding half a step rounds to the nearest digit instead of down */
+    units = (magnitude + step / 2) / step;
 
     /* no "-0.00" when the value rounds to zero */
-    sign = (milli < 0 && units != 0) ? "-" : "";
+    if (milli < 0 && units != 0) {
+        sign = "-";
+    }
+    else {
+        sign = "";
+    }
 
     snprintf(text, len, "%s%ld.%0*ld%s",
              sign, (long)(units / scale), decimals, (long)(units % scale), unit);
@@ -264,7 +275,12 @@ static void display_status_texts(psu_display_data_t *data, const psu_display_sta
     display_set_field(data, UI_FIELD_BATTERY_ICON, text, UI_COLOR_ACCENT, UI_COLOR_BG);
 
     /* Wi-Fi, -1 or out of range = no Wi-Fi */
-    data->wifi_level = (status->wifi_level >= 0 && status->wifi_level <= 3) ? status->wifi_level : (int8_t)-1;
+    if (status->wifi_level >= 0 && status->wifi_level <= 3) {
+        data->wifi_level = status->wifi_level;
+    }
+    else {
+        data->wifi_level = -1;
+    }
     snprintf(text, sizeof(text), "%d", (int)data->wifi_level);
     display_set_field(data, UI_FIELD_WIFI, text, UI_COLOR_ACCENT, UI_COLOR_BG);
 
@@ -295,8 +311,12 @@ static void display_status_texts(psu_display_data_t *data, const psu_display_sta
                           display_level_color(psu_event_log_fault_level(status->fault_code)), UI_COLOR_BG);
     }
 
-    /* FPGA fault, "--" while its heartbeat is missing (pins mean nothing then) */
-    if (!status->fpga_alive) {
+    /* FPGA fault, "DEBUG" when running without the FPGA, "--" while its heartbeat is missing (pins mean nothing then) */
+    if (status->debug_mode) {
+        display_set_field(data, UI_FIELD_FPGA_FAULT, "FPGA: DEBUG",
+                          display_level_color(EVENT_LEVEL_WARNING), UI_COLOR_BG);
+    }
+    else if (!status->fpga_alive) {
         display_set_field(data, UI_FIELD_FPGA_FAULT, "FPGA: --", UI_COLOR_DIM, UI_COLOR_BG);
     }
     else if (status->fpga_fault_code == FEE_CODE_DEFAULT) {
@@ -353,6 +373,7 @@ void psu_display_status_init(psu_display_status_t *status)
 {
     status->state           = FSM_STATE_OFF;
     status->fault_code      = FEE_CODE_DEFAULT;
+    status->debug_mode      = false;
     status->fpga_alive      = false;
     status->fpga_fault_code = FEE_CODE_DEFAULT;
     status->battery_percent = -1;
@@ -523,10 +544,12 @@ static void display_draw_battery_icon(const psu_ui_element_t *e, int8_t percent)
     int16_t  inner_w = (int16_t)(body_w - 4);
     int16_t  inner_h = (int16_t)(e->h - 4);
     int16_t  fill_w  = 0;
-    uint16_t outline = (percent >= 0) ? e->color : (uint16_t)UI_COLOR_INACTIVE;
+    uint16_t outline = (uint16_t)UI_COLOR_INACTIVE;
 
+    /* known level: colored outline and a fill */
     if (percent >= 0) {
-        fill_w = (int16_t)((int32_t)inner_w * percent / 100);
+        outline = e->color;
+        fill_w  = (int16_t)((int32_t)inner_w * percent / 100);
     }
 
     g_tft.drawRect((int16_t)e->x, (int16_t)e->y, body_w, (int16_t)e->h, outline);
@@ -545,13 +568,21 @@ static void display_draw_battery_icon(const psu_ui_element_t *e, int8_t percent)
  */
 static void display_draw_wifi_icon(const psu_ui_element_t *e, int8_t level)
 {
-    int16_t i;
-    int16_t bar_h;
+    int16_t  i;
+    int16_t  bar_h;
+    uint16_t bar_color;
 
     for (i = 0; i < 3; i++) {
+        /* bars below the level are lit */
+        if (i < level) {
+            bar_color = (uint16_t)UI_COLOR_ACCENT;
+        }
+        else {
+            bar_color = (uint16_t)UI_COLOR_INACTIVE;
+        }
+
         bar_h = (int16_t)(4 + 5 * i);
-        g_tft.fillRect((int16_t)(e->x + 2 + 7 * i), (int16_t)(e->y + e->h - bar_h), (int16_t)4, bar_h,
-                       (uint16_t)((i < level) ? UI_COLOR_ACCENT : UI_COLOR_INACTIVE));
+        g_tft.fillRect((int16_t)(e->x + 2 + 7 * i), (int16_t)(e->y + e->h - bar_h), (int16_t)4, bar_h, bar_color);
     }
 }
 
