@@ -32,7 +32,7 @@ typedef struct
     psu_fee_code_t       fpga_fault_code;   /* highest active fault on the FPGA */
     int8_t               battery_percent;   /* 0 to 100, -1 = unknown */
     int8_t               wifi_level;        /* 0 to 3 bars, -1 = no Wi-Fi */
-    psu_display_switch_t charge;            /* relay A, charging the PSU */
+    psu_display_switch_t charge;            /* charging module, charging the PSU */
     psu_display_switch_t ac;                /* inverter output */
     psu_display_switch_t usb_a;
     psu_display_switch_t usb_c;

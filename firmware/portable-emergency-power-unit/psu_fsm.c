@@ -54,7 +54,7 @@ void psu_fsm_update(psu_fsm_t *fsm, const psu_fsm_inputs_t *in)
         }
         break;
 
-    /* BOOT: wait for main system init result */
+    /* BOOT: main relay closed so the sensors get power, wait for main system init result */
     case FSM_STATE_BOOT:
         next_out.system_enable = true;
         if (in->boot_passed) {

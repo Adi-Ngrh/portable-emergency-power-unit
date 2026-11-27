@@ -1,6 +1,8 @@
 /*
  * Arduino core functions used:
  *   millis()
+ *   Serial.println()
+ *   Serial.printf()
  */
 
 #include <Arduino.h>
@@ -80,20 +82,51 @@ bool psu_power_sensor_init(void)
 {
     bool     ok = true;
     uint16_t readback;
+    uint8_t  debug_address;   /* DEBUG, remove after the INA226 test */
+    uint8_t  debug_error;     /* DEBUG, remove after the INA226 test */
 
     /* I2C bus, other I2C drivers may call this again safely */
     Wire.begin(SDA_PIN, SCL_PIN, (uint32_t)I2C_CLOCK_HZ);
 
+    /* DEBUG: status of every I2C address 0x08 to 0x77, remove after the INA226 test */
+    Serial.println("DEBUG I2C: status 0 = answered, 2 = no answer, 4 = bus error, 5 = bus timeout");
+    for (debug_address = 0x08; debug_address <= 0x77; debug_address++) {
+        Wire.beginTransmission(debug_address);
+        debug_error = Wire.endTransmission();
+        if (debug_error == 0) {
+            Serial.printf("DEBUG I2C: 0x%02X status %u  <-- ANSWERED\n", debug_address, debug_error);
+        }
+        else {
+            Serial.printf("DEBUG I2C: 0x%02X status %u\n", debug_address, debug_error);
+        }
+    }
+    Serial.println("DEBUG I2C: address check done");
+
     if (!ina226_write((uint8_t)INA226_REG_CONFIG, (uint16_t)INA226_CONFIG_VALUE)) {
         ok = false;
+        Serial.println("DEBUG INA226: config write FAILED (no answer at 0x40)");   /* DEBUG */
     }
     if (!ina226_write((uint8_t)INA226_REG_CAL, (uint16_t)INA226_CAL_VALUE)) {
         ok = false;
+        Serial.println("DEBUG INA226: calibration write FAILED");   /* DEBUG */
     }
 
     /* read config back to verify */
-    if (!ina226_read((uint8_t)INA226_REG_CONFIG, &readback) || readback != INA226_CONFIG_VALUE) {
+    if (!ina226_read((uint8_t)INA226_REG_CONFIG, &readback)) {
         ok = false;
+        Serial.println("DEBUG INA226: config read FAILED");   /* DEBUG */
+    }
+    else if (readback != INA226_CONFIG_VALUE) {
+        ok = false;
+        Serial.printf("DEBUG INA226: config read back 0x%04X, expected 0x4527\n", readback);   /* DEBUG */
+    }
+
+    /* DEBUG: overall result, remove after the INA226 test */
+    if (ok) {
+        Serial.println("DEBUG INA226: init OK");
+    }
+    else {
+        Serial.println("DEBUG INA226: init FAILED");
     }
 
     /* first read waits one conversion cycle */

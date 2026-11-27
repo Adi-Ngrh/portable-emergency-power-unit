@@ -8,13 +8,15 @@
 #define SDA_PIN         21     /* I2C SDA */
 #define SCL_PIN         22     /* I2C SCL */
 #define DS18B20_PIN     4      /* OneWire bus, 1 sensor */
-#define RELAY_A_PIN     25     /* charge path: grid - charger - relay A - battery */
-#define RELAY_B_PIN     27     /* discharge path: BMS - relay B - inverter & USB-C */
+#define DS18B20_INSTALLED 0    /* 0 = not soldered yet, its boot check and reads are skipped; set 1 once soldered */
+#define MAIN_RELAY_PIN  25     /* main relay: rocker switch - relay - inverter, charging module and load */
+#define MAIN_RELAY_CLOSED_LEVEL  HIGH   /* pin level that closes the relay, swap both lines for a module that switches on LOW */
+#define MAIN_RELAY_OPEN_LEVEL    LOW    /* pin level that opens the relay */
 #define FAN_PIN         26     /* 12 V fan MOSFET */
 
 /* ==================== TFT (MSP2807, ILI9341) ==================== */
 
-#define TFT_SCK_PIN     18     /* VSPI SCK */
+#define TFT_SCK_PIN     33     /* SCK, routed through the GPIO matrix (easier to solder than GPIO18) */
 #define TFT_MOSI_PIN    14     /* MOSI, module SDI (GPIO23 is used elsewhere) */
 #define TFT_MISO_PIN    -1     /* not connected, the firmware never reads the display */
 #define TFT_CS_PIN      5      /* VSPI SS */
@@ -42,6 +44,8 @@ extern "C" {
 #endif
 
 bool psu_board_init(void);
+void psu_main_relay_init(void);
+void psu_main_relay_update(bool closed);
 
 #ifdef __cplusplus
 }

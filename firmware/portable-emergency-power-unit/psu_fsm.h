@@ -38,7 +38,7 @@ typedef struct
 /* FSM outputs */
 typedef struct
 {
-    bool system_enable;      /* main system on, for the relay code (not written yet) */
+    bool system_enable;      /* main system on, closes the main relay (psu_board.c) */
     bool boot_success;       /* to FPGA: main system is up */
     bool shutdown_success;   /* to FPGA: main system is off */
 } psu_fsm_outputs_t;

@@ -1,6 +1,8 @@
 /*
  * Arduino core functions used:
  *   millis()
+ *   Serial.begin()
+ *   Serial.println()
  */
 
 #include <freertos/FreeRTOS.h>
@@ -43,6 +45,7 @@
 #define CONTROL_TASK_PERIOD_MS     1     /* one FSM/FEE update per tick, FEE windows start at 1 ms */
 #define SENSOR_TASK_PERIOD_MS      10    /* drivers pace themselves (power 36 ms, temperature 750 ms) */
 #define DISPLAY_WAIT_MS            100   /* longest wait for a reading, screen keeps updating */
+#define MAIN_SYSTEM_POWER_UP_MS    500   /* sensors are powered behind the main relay, wait this long before checking them */
 
 /* queue lengths */
 #define CONTROL_READINGS_QUEUE_LEN 4     /* control takes one every 1 ms, sensor sends one every ~10 ms */
@@ -95,6 +98,10 @@ static void display_task(void *param);
 
 void setup()
 {
+    /* DEBUG: Serial Monitor at 115200, remove after the INA226 test */
+    Serial.begin(115200);
+    Serial.println("DEBUG: setup start");
+
     /* queues first, a task can run as soon as it is created */
     g_boot_request_queue     = xQueueCreate(1, sizeof(bool));
     g_boot_answer_queue      = xQueueCreate(1, sizeof(bool));
@@ -153,6 +160,9 @@ static void control_task(void *param)
     TickType_t wake_tick;
 
     (void)param;
+
+    /* main relay first, so the main system stays off until the FSM says otherwise */
+    psu_main_relay_init();
 
     psu_fsm_init(&g_fsm);
     psu_fee_init(&g_fee);
@@ -224,7 +234,7 @@ static void control_update(void)
         fpga_fault = psu_fpga_fault_update();
     }
 
-    /* main system shutdown: nothing to switch off yet, so it is done at once (replace with relay code) */
+    /* main system shutdown: the relay opens as soon as system_enable drops, so it is done at once */
     g_fsm_in.shutdown_done = (g_fsm.state == FSM_STATE_SHUTDOWN);
 
     /* voltage and current -> FEE */
@@ -248,6 +258,9 @@ static void control_update(void)
     g_fsm_in.critical_request = g_fee.out.critical_response;
 
     psu_fsm_update(&g_fsm, &g_fsm_in);
+
+    /* main relay follows system_enable: closed powers the inverter, charging module and load */
+    psu_main_relay_update(g_fsm.out.system_enable);
 
     /* heartbeat and status pins -> FPGA, the heartbeat stops if this task stops */
     psu_mcu_heartbeat_update();
@@ -313,8 +326,19 @@ static void sensor_task(void *param)
     for (;;) {
         /* BOOT asked to start the sensors: start them once and answer */
         if (xQueueReceive(g_boot_request_queue, &boot_request, 0) == pdTRUE) {
+            /* the main relay closes on entering BOOT, give the main system time to power up */
+            vTaskDelay(pdMS_TO_TICKS(MAIN_SYSTEM_POWER_UP_MS));
+
             boot_answer = psu_board_init();
             xQueueSend(g_boot_answer_queue, &boot_answer, 0);
+
+            /* DEBUG: boot result, remove after the INA226 test */
+            if (boot_answer) {
+                Serial.println("DEBUG BOOT: all sensors OK -> NORMAL");
+            }
+            else {
+                Serial.println("DEBUG BOOT: a sensor FAILED -> OFF");
+            }
         }
 
         /* newest "read the sensors" order, the old one is kept if none yet */
@@ -323,7 +347,11 @@ static void sensor_task(void *param)
         /* sensors only while main system is up */
         if (read_enabled) {
             psu_power_read(&g_sensor_readings.power);
-            psu_temperature_read(&g_sensor_readings.temperature);
+
+            /* temperature stays invalid without error until the DS18B20 is soldered */
+            if (DS18B20_INSTALLED) {
+                psu_temperature_read(&g_sensor_readings.temperature);
+            }
         }
         else {
             g_sensor_readings.power.valid       = false;
